@@ -1,0 +1,207 @@
+{
+    int retVal = 0;
+    try
+    {
+        std::vector<std::string> args = std::vector<std::string>(argv+1, argv+argc);
+        if (args.empty()) {
+            std::ifstream fileIn("filelist");
+            std::string filelistName;
+            while (std::getline(fileIn, filelistName)) {
+                args.push_back(filelistName);
+            }
+        }
+        for(std::string fileName : args)
+        {
+            ini::Configuration conf;
+            try
+            {
+                std::ifstream fin(fileName);
+                if (fin.peek() == std::istream::traits_type::eof()) {
+                    std::cout << "Ini file appears empty. Does '" <<
+                              fileName << "' exist?" << std::endl;
+                    continue;
+                }
+                fin >> conf;
+                fin.close();
+            }
+            catch(ini::ParseException& ex)
+            {
+                std::cerr << "Error parsing file: " << fileName << ": " << ex.what() << std::endl;
+                retVal = 1;
+                continue;
+            }
+
+            img::EasyImage image = generate_image(conf);
+            if(image.get_height() > 0 && image.get_width() > 0)
+            {
+                std::string::size_type pos = fileName.rfind('.');
+                if(pos == std::string::npos)
+                {
+                    //filename does not contain a '.' --> append a '.bmp' suffix
+                    fileName += ".bmp";
+                }
+                else
+                {
+                    fileName = fileName.substr(0,pos) + ".bmp";
+                }
+                try
+                {
+                    std::ofstream f_out(fileName.c_str(),std::ios::trunc | std::ios::out | std::ios::binary);
+                    f_out << image;
+
+                }
+                catch(std::exception& ex)
+                {
+                    std::cerr << "Failed to write image to file: " << ex.what() << std::endl;
+                    retVal = 1;
+                }
+            }
+            else
+            {
+                std::cout << "Could not generate image for " << fileName << std::endl;
+            }
+        }
+    }
+    catch(const std::bad_alloc &exception)
+    {
+        //When you run out of memory this exception is thrown. When this happens the return value of the program MUST be '100'.
+        //Basically this return value tells our automated test scripts to run your engine on a pc with more memory.
+        //(Unless of course you are already consuming the maximum allowed amount of memory)
+        //If your engine does NOT adhere to this requirement you risk losing points because then our scripts will
+        //mark the test as failed while in reality it just needed a bit more memory
+        std::cerr << "Error: insufficient memory" << std::endl;
+        retVal = 100;
+    }
+    return retVal;
+
+
+double x1 = ceil(p1.x), y1 = ceil(p1.y);
+    double x2 = ceil(p2.x), y2 = ceil(p2.y);
+
+    double xi,yi;
+    std::list<Point2D> points;
+    if (x1 == x2){//verticale lijn
+        Point2D p;
+        p.x = x1;
+        if (y1 < y2){
+            for (int i = 0; i <= (y2-y1); i++){
+                yi = y1+i;
+                p.y = yi;
+                points.push_back(p);
+            }
+        }
+        else if (y2 < y1){
+            for (int i = 0; i <= (y1-y2); i++){
+                yi = y2+i;
+                p.y = yi;
+                points.push_back(p);
+            }
+        }
+        return points;
+    }
+    else if (y1 == y2){
+        Point2D p(0,0);
+        p.y = y1;
+        for (int i = 0; i <= (x2-x1); i++){
+            xi = x1+i;
+            p.x = xi;
+            points.push_back(p);
+            }
+        return points;
+    }
+    if (x1 > x2){
+        auto temp = x1;
+        x1 = x2;
+        x2 = temp;
+    }
+    double m = (y2-y1)/(x2-x1);
+
+    if (m <= 1 && 0 < m ){
+        for (int i = 0; i < x2-x1; i++){
+            xi = x1+i;
+            yi = round(y1 + (m*i));
+            points.push_back(Point2D(xi,yi));
+        }
+        return points;
+    }
+    else if (-1 <= m && m < 0){
+        for (int i = 0; i < x2-x1; i++){
+            xi = x1+i;
+            yi = round(y1 + (m*i));
+            points.push_back(Point2D(xi,yi));
+        }
+        return points;
+    }
+    else if (m > 1) {
+        for (int i = 0; i < y2-y1; i++){
+            yi = y1+i;
+            xi = round(x1+(i/m));
+            points.push_back(Point2D(xi,yi));
+        }
+        return points;
+    }
+    else if (m < -1){
+        for (int i = 0; i < y1-y2; i++){
+            yi = y1-i;
+            xi = round(x1-(i/m));
+            points.push_back(Point2D(xi,yi));
+        }
+        return points;
+    }
+    return points;
+}
+
+auto background = img::Color(bgc.red*255, bgc.green*255, bgc.blue*255);
+    double xmin = size, xmax = 0, ymin = size, ymax = 0;
+
+    for (auto& l: lines) {
+        if (l.p1.x < xmin) xmin = l.p1.x;
+        else if (l.p1.x > xmax) xmax = l.p1.x;
+        if (l.p1.y < ymin) ymin = l.p1.y;
+        else if (l.p1.y > ymax) ymax = l.p1.y;
+        if (l.p2.x < xmin) xmin = l.p2.x;
+        else if (l.p2.x > xmax) xmax = l.p2.x;
+        if (l.p2.y < ymin) ymin = l.p2.y;
+        else if (l.p2.y > ymax) ymax = l.p2.y;
+
+    }
+    //grootte image berekenen
+    auto xrange = xmax - xmin;
+    auto yrange = ymax - ymin;
+    unsigned int imagex = size * (xrange / std::max(xrange, yrange));
+    unsigned int imagey = size * (yrange / std::max(xrange, yrange));
+
+    //schaalfactor berekenen
+    auto schaalfactor_d = 0.95 * (imagex / xrange);
+    for (auto &l: lines) {
+        l.p1.x = l.p1.x * schaalfactor_d;
+        l.p1.y = l.p1.y * schaalfactor_d;
+        l.p2.x = l.p2.x * schaalfactor_d;
+        l.p2.y = l.p2.y * schaalfactor_d;
+    }
+
+    //tekening verschuiven
+    double DCx = schaalfactor_d * ((xmax + xmin) / 2);
+    double DCy = schaalfactor_d * ((ymax + ymin) / 2);
+    double dx = imagex / 2 - DCx;
+    double dy = imagey / 2 - DCy;
+
+    for (auto &l: lines) {
+        l.p1.x = l.p1.x + dx;
+        l.p1.y = l.p1.y + dy;
+        l.p2.x = l.p2.x + dx;
+        l.p2.y = l.p2.y + dy;
+    }
+    auto drawingcolor = img::Color(drawing_color.red*255,drawing_color.green*255,drawing_color.blue*255);
+    std::list<Point2D> all_points;
+    for (auto& l: lines){
+        auto line_points = l.get_coordinates();
+        for (auto i: line_points){
+            all_points.push_back(i);
+        }
+    }
+    img::EasyImage image(imagex, imagey, background);
+    for (auto p: all_points) {
+        image(p.x, p.y) = drawingcolor ;
+    }
+    return image;
