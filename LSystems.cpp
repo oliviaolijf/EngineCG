@@ -6,89 +6,60 @@
 #include <cmath>
 
 std::list<Point2D> Line2D::get_coordinates() {
-    double x1 = p1.x, y1 = p1.y;
-    double x2 = p2.x, y2 = p2.y;
-    double x,y;
     std::list<Point2D> points;
-    if (x1 == x2){//verticale lijn
-        Point2D p(0,0);
-        p.x = x1;
-        if (y1 < y2){
-            for (int i = 0; i <= (y2-y1); i++){
-                y = y1+i;
-                p.y = y;
-                points.push_back(p);
-            }
-        }
-        else if (y2 < y1){
-            for (int i = 0; i <= (y1-y2); i++){
-                y = y2+i;
-                p.y = y;
-                points.push_back(p);
-            }
+    auto xa = ceil(p1.x); auto ya = ceil(p1.y);
+    auto xb = ceil(p2.x); auto yb = ceil(p2.y);
+    if (xa > xb){
+        auto temp = xa;
+        xa = xb;
+        xb = temp;
+    }
+    if (xa == xb){
+        for (int i = 0; i < std::max(ya,yb) - std::min(ya, yb); i++){
+            auto y = std::min(ya,yb);
+            points.push_back(Point2D(xa, y+i));
         }
         return points;
     }
-    else if (y1 == y2){
-        Point2D p(0,0);
-        p.y = y1;
-        if (x1 < x2){
-            for (int i = 0; i <= (x2-x1); i++){
-                x = x1+i;
-                p.x = x;
-                points.push_back(p);
-            }
-        }
-        else if (x2 < x1){
-            for (int i = 0; i <= (x1-x2); i++){
-                x = x2+i;
-                p.x = x;
-                points.push_back(p);
-            }
+    else if (ya == yb){
+        for (int i = 0; i < xb-xa; i++){
+            points.push_back(Point2D(xa+i, ya));
         }
         return points;
     }
-    double m = (y2-y1)/(x2-x1);
-    if (m <= 1 && 0 < m){
-        double xi, yi;
-        for (int i = 0; i < x2-x1; i++){
-            xi = x1+i;
-            yi = round(y1 + m*i);
+    double m = (yb-ya)/(xb-xa);
+    double xi, yi;
+    if (0.0 < m <= 1.0){
+        for (int i = 0; i < xb-xa; i++){
+            xi = xa + i;
+            yi = round(ya+(m*i));
             points.push_back(Point2D(xi,yi));
         }
         return points;
     }
-    else if (-1 <= m && m < 0){
-        double xi, yi;
-        for (int i = 0; i < x2-x1; i++){
-            xi = x1+i;
-            yi = round(y1 + m*i);
+    else if (-1.0 <= m < 0.0){
+        for (int i = 0; i < xb-xa; i++){
+            xi = xa + i;
+            yi = round(ya+(m*i));
             points.push_back(Point2D(xi,yi));
         }
         return points;
     }
-    else if (m > 1) {
-        double xi, yi;
-        for (int i = 0; i < y2-y1; i++){
-            yi = y1+i;
-            xi = round(x1+(i/m));
+    else if (m > 1){
+        for (int i = 0; i < yb-ya; i++){
+            yi = ya + i;
+            xi = round(xa + (i/m));
             points.push_back(Point2D(xi,yi));
         }
+        return points;
     }
     else if (m < -1){
-        double xi, yi;
-        for (int i = 0; i < y1-y2; i++){
-            yi = y1+i;
-            xi = round(x1+(i/m));
+        for (int i = 0; i < ya-yb; i++){
+            yi = ya - i;
+            xi = round(xa - (i/m));
             points.push_back(Point2D(xi,yi));
         }
+        return points;
     }
-    return points;
-}
-
-std::list<Point2D> Line2D::get_begin_and_end() {
-    std::list<Point2D> points;
-    points.push_back(p1);
-    points.push_back(p2);
     return points;
 }

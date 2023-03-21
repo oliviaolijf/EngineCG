@@ -1,61 +1,59 @@
-#include "easy_image.h"
-#include "ini_configuration.h"
-#include "LSystems.h"
-#include "l_parser/l_parser.h"
-
-#define _USE_MATH_DEFINES
-#include <fstream>
-#include <iostream>
-#include <stdexcept>
-#include <string>
-#include <list>
-#include <set>
-#include <cmath>
-
-using Lines2D = std::list<Line2D>;
-
+//
+// Created by olivi on 3/17/2023.
+//
 img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color drawing_color) {
-    auto backgroundcolor = img::Color(bgc.red*255, bgc.green*255, bgc.blue*255);
-    auto drawingcolor = img::Color(drawing_color.red*255, drawing_color.green*255, drawing_color.blue*255);
+    auto background = img::Color(bgc.red*255, bgc.green*255, bgc.blue*255);
+    double xmin = size, xmax = 0, ymin = size, ymax = 0;
 
-    double xmax = 0, xmin = size, ymax = 0, ymin = size;
-    for (auto &l: lines){
-        if (std::max(l.p1.x, l.p2.x) > xmax) xmax = std::max(l.p2.x, l.p1.x);
-        if (std::min(l.p1.x, l.p2.x) < xmin) xmin = std::min(l.p2.x, l.p1.x);
-        if (std::max(l.p1.y, l.p2.y) > ymax) ymax = std::max(l.p2.x, l.p1.x);
-        if (std::min(l.p1.y, l.p2.y) < ymin) ymin = std::min(l.p2.x, l.p1.x);
+    for (auto& l: lines) {
+        if (l.p1.x < xmin) xmin = l.p1.x;
+        else if (l.p1.x > xmax) xmax = l.p1.x;
+        if (l.p1.y < ymin) ymin = l.p1.y;
+        else if (l.p1.y > ymax) ymax = l.p1.y;
+        if (l.p2.x < xmin) xmin = l.p2.x;
+        else if (l.p2.x > xmax) xmax = l.p2.x;
+        if (l.p2.y < ymin) ymin = l.p2.y;
+        else if (l.p2.y > ymax) ymax = l.p2.y;
+
+    }
+    //grootte image berekenen
+    auto xrange = xmax - xmin;
+    auto yrange = ymax - ymin;
+    unsigned int imagex = size * (xrange / std::max(xrange, yrange));
+    unsigned int imagey = size * (yrange / std::max(xrange, yrange));
+
+    //schaalfactor berekenen
+    auto schaalfactor_d = 0.95 * (imagex / xrange);
+    for (auto &l: lines) {
+        l.p1.x = l.p1.x * schaalfactor_d;
+        l.p1.y = l.p1.y * schaalfactor_d;
+        l.p2.x = l.p2.x * schaalfactor_d;
+        l.p2.y = l.p2.y * schaalfactor_d;
     }
 
-    auto xrange = xmax-xmin;
-    auto yrange = ymax-ymin;
+    //tekening verschuiven
+    double DCx = schaalfactor_d * ((xmax + xmin) / 2);
+    double DCy = schaalfactor_d * ((ymax + ymin) / 2);
+    double dx = imagex / 2 - DCx;
+    double dy = imagey / 2 - DCy;
 
-    auto imagex = size*(xrange/ std::max(xrange, yrange));
-    auto imagey = size*(yrange/ std::max(xrange, yrange));
-
-    auto d = 0.95*(imagex/xrange);
-
-    auto DCx = (d*(xmin+xmax))/2;
-    auto DCy = (d*(ymin+ymax))/2;
-    auto dcx = (imagex/2)-DCx;
-    auto dcy = (imagey/2)-DCy;
-
-    for (auto& l: lines){
-        l.p1.x = (l.p1.x * d) + dcx;
-        l.p2.x = (l.p2.x * d) + dcx;
-        l.p1.y = (l.p1.y * d) + dcy;
-        l.p2.y = (l.p2.y * d) + dcy;
+    for (auto &l: lines) {
+        l.p1.x = std::round(l.p1.x + dx);
+        l.p1.y = std::round(l.p1.y + dy);
+        l.p2.x = std::round(l.p2.x + dx);
+        l.p2.y = std::round(l.p2.y + dy);
     }
-
+    auto drawingcolor = img::Color(drawing_color.red*255,drawing_color.green*255,drawing_color.blue*255);
     std::list<Point2D> all_points;
     for (auto& l: lines){
-        auto points = l.get_coordinates();
-        for (auto p: points){
-            all_points.push_back(p);
+        auto line_points = l.get_coordinates();
+        for (auto i: line_points){
+            all_points.push_back(i);
         }
     }
-    img::EasyImage image(imagex, imagey, backgroundcolor);
-    for (auto p: all_points){
-        image(p.x, p.y) = drawingcolor;
+    img::EasyImage image(imagex, imagey, background);
+    for (auto p: all_points) {
+        image(p.x, p.y) = drawingcolor ;
     }
     return image;
 }
@@ -151,19 +149,4 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         return image;
     }
     return img::EasyImage();
-}
-
-
-int main(int argc, char const *argv[]) {
-    ini::Configuration input;
-    std::ifstream open;
-    open.open("l_systems004.ini");
-    open >> input;
-    open.close();
-    auto image = generate_image(input);
-
-    std::ofstream slay;
-    slay.open("test1.bmp");
-    slay << image;
-    slay.close();
 }

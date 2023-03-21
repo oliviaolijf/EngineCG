@@ -32,7 +32,6 @@ public:
     Line2D(Point2D a, Point2D b, Color c) {p1 = a; p2 = b; color = c;};
 
     std::list<Point2D> get_coordinates();
-    std::list<Point2D> get_begin_and_end();
 
 };
 #endif //ENGINE_LSYSTEMS_H
