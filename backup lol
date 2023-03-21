@@ -1,0 +1,129 @@
+img::EasyImage Draw2DLines(const Lines2D &lines, const int size, Color bgc) {
+    auto background = img::Color(bgc.red, bgc.green, bgc.blue);
+    img::EasyImage image(size, size, background);
+    double xmin = size, xmax = 0, ymin = size, ymax = 0;
+    std::list<Point2D> all_points;
+    std::list<Color> all_colors;
+    for (auto l: lines) {
+        auto points = l.get_coordinates();
+        for (auto &p: points) {
+            if (p.x < xmin) xmin = p.x;
+            else if (p.x > xmax) xmax = p.x;
+            if (p.y < ymin) ymin = p.y;
+            else if (p.y > ymax) ymax = p.y;
+            all_points.push_back(p);
+        }
+        all_colors.push_back(l.color);
+    }
+    //grootte image berekenen
+    auto xrange = xmax - xmin;
+    auto yrange = ymax - ymin;
+    unsigned int imagex = size * (xrange / std::max(xrange, yrange));
+    unsigned int imagey = size * (yrange / std::max(xrange, yrange));
+
+    //schaalfactor berekenen
+    auto schaalfactor_d = 0.95 * (imagex / xrange);
+    for (auto &p: all_points) {
+        p.x = p.x * schaalfactor_d;
+        p.y = p.y * schaalfactor_d;
+    }
+
+    //tekening verschuiven
+    double DCx = schaalfactor_d * ((xmax + xmin) / 2);
+    double DCy = schaalfactor_d * ((ymax + ymin) / 2);
+    double dx = imagex / 2 - DCx;
+    double dy = imagey / 2 - DCy;
+
+    for (auto &p: all_points) {
+        p.x = std::round(p.x + dx);
+        p.y = std::round(p.y + dy);
+    }
+    auto white = img::Color(1,1,1);
+    for (auto p: all_points) {
+        image(p.x, p.y) = white ;
+        return image;
+    }
+}
+
+img::EasyImage generate_image(const ini::Configuration &configuration) {
+        auto type = configuration["General"]["type"].as_string_or_die();
+        auto size = configuration["General"]["size"].as_int_or_die();
+        auto backgroundcolor = configuration["General"]["backgroundcolor"].as_double_tuple_or_die();
+        std::map<int, double> bgcolormap;
+        int bgcm = 0;
+        for (auto c: backgroundcolor) {
+            bgcolormap[bgcm] = c;
+            bgcm++;
+        }
+        Color bgcolor(bgcolormap[0], bgcolormap[1], bgcolormap[2]);
+
+        if (type == "2DLSystem") {
+            img::EasyImage image(size, size);
+            auto inputfile = configuration["2DLSystem"]["inputfile"].as_string_or_die();
+            auto color = configuration["2DLSystem"]["color"].as_double_tuple_or_die();
+            std::map<int, double> colormap;
+            int cm = 0;
+            for (auto c: color) {
+                colormap[cm] = c;
+                cm++;
+            }
+            Color color2(colormap[0], colormap[1], colormap[2]);
+
+            std::ifstream input(inputfile);
+            LParser::LSystem2D lsystem(input);
+            input.close();
+
+            auto alfabet = lsystem.get_alphabet();
+            auto starting_angle = lsystem.get_starting_angle();
+            auto angle = lsystem.get_angle();
+            auto initiator = lsystem.get_initiator();
+            auto iterations = lsystem.get_nr_iterations();
+
+            double angle_rad = angle * (M_PI / 180);
+            double startingangle_rad = starting_angle * (M_PI / 180);
+
+            std::map<char, std::string> replacement_rules;
+            for (auto &p: alfabet) {
+                auto name = p;
+                auto replacement = lsystem.get_replacement(p);
+                replacement_rules[name] = replacement;
+            }
+            int baba = 0;
+            std::string full_string = initiator;
+            while (baba < 1) { //Terug veranderen naar iterations!!
+                std::string temp;
+                for (auto &c: full_string) {
+                    if (c != '+' && c != '-') {
+                        auto rr = replacement_rules[c];
+                        temp += rr;
+                    } else {
+                        temp += c;
+                    }
+                }
+                full_string = temp;
+                baba++;
+            }
+            //lijnenvector maken lol
+            double x = 0, y = 0;
+            Lines2D lijntjes;
+            for (auto &c: full_string) {
+                if (c != '+' && c != '-') {
+                    if (lsystem.draw(c) == 1) {
+                        Point2D p1(x, y);
+                        x += std::cos(startingangle_rad);
+                        y += std::sin(startingangle_rad);
+                        Point2D p2(x, y);
+                        Line2D l(p1, p2, color2);
+                        lijntjes.push_back(l);
+                    }
+                } else if (c == '+') {
+                    startingangle_rad += angle_rad;
+                } else if (c == '-') {
+                    startingangle_rad -= angle_rad;
+                }
+            }
+            image = Draw2DLines(lijntjes, size, color2);
+            return image;
+        }
+        return img::EasyImage();
+    }
