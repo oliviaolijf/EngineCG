@@ -37,7 +37,7 @@ std::list<Point2D> Line2D::get_coordinates() {
         }
         return points;
     }
-    else if (-1.0 <= m < 0.0){
+    else if (-1 <= m < 0.0){
         for (int i = 0; i < xb-xa; i++){
             xi = xa + i;
             yi = round(ya+(m*i));

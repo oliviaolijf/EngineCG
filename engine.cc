@@ -22,8 +22,8 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color draw
     for (auto &l: lines){
         if (std::max(l.p1.x, l.p2.x) > xmax) xmax = std::max(l.p2.x, l.p1.x);
         if (std::min(l.p1.x, l.p2.x) < xmin) xmin = std::min(l.p2.x, l.p1.x);
-        if (std::max(l.p1.y, l.p2.y) > ymax) ymax = std::max(l.p2.x, l.p1.x);
-        if (std::min(l.p1.y, l.p2.y) < ymin) ymin = std::min(l.p2.x, l.p1.x);
+        if (std::max(l.p1.y, l.p2.y) > ymax) ymax = std::max(l.p2.y, l.p1.y);
+        if (std::min(l.p1.y, l.p2.y) < ymin) ymin = std::min(l.p2.y, l.p1.y);
     }
 
     auto xrange = xmax-xmin;
@@ -38,14 +38,22 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color draw
     auto DCy = (d*(ymin+ymax))/2;
     auto dcx = (imagex/2)-DCx;
     auto dcy = (imagey/2)-DCy;
+    img::EasyImage image(imagex, imagey, backgroundcolor);
 
     for (auto& l: lines){
         l.p1.x = (l.p1.x * d) + dcx;
         l.p2.x = (l.p2.x * d) + dcx;
         l.p1.y = (l.p1.y * d) + dcy;
         l.p2.y = (l.p2.y * d) + dcy;
+        image.draw_line(
+             (unsigned int)std::lround(l.p1.x),
+             (unsigned int)std::lround(l.p1.y),
+             (unsigned int)std::lround(l.p2.x),
+             (unsigned int)std::lround(l.p2.y),
+             drawingcolor
+        );
     }
-
+    return image;
     std::list<Point2D> all_points;
     for (auto& l: lines){
         auto points = l.get_coordinates();
@@ -53,7 +61,6 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color draw
             all_points.push_back(p);
         }
     }
-    img::EasyImage image(imagex, imagey, backgroundcolor);
     for (auto p: all_points){
         image(p.x, p.y) = drawingcolor;
     }
@@ -97,6 +104,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
         double angle_rad = (angle * M_PI)/180;
         double startingangle_rad = (starting_angle * M_PI)/180;
+        double tempangle;
 
         int iter = 0;
         std::string full_string = initiator;
@@ -117,6 +125,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         double x = 0, y = 0;
         Point2D pointend;
         std::list<Point2D> bracket_stack;
+        std::list<double> angle_stack;
         Lines2D lijntjes;
         for (auto &c: full_string) {
             if (alfabet.count(c)) {
@@ -139,12 +148,15 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
             }
             else if (c == '('){
                 pointend.x = x; pointend.y = y;
+                angle_stack.push_back(startingangle_rad);
                 bracket_stack.push_back(pointend);
             }
             else if (c == ')'){
                 Point2D last_point = bracket_stack.back();
+                startingangle_rad = angle_stack.back();
                 x = last_point.x; y = last_point.y;
                 bracket_stack.pop_back();
+                angle_stack.pop_back();
             }
         }
         auto image = Draw2DLines(lijntjes, size, bgcolor, color2);
@@ -156,14 +168,78 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 int main(int argc, char const *argv[]) {
     ini::Configuration input;
-    std::ifstream open;
-    open.open("l_systems004.ini");
-    open >> input;
-    open.close();
-    auto image = generate_image(input);
+    int retVal = 0;
+    try
+    {
+        std::vector<std::string> args = std::vector<std::string>(argv+1, argv+argc);
+        if (args.empty()) {
+            std::ifstream fileIn("filelist");
+            std::string filelistName;
+            while (std::getline(fileIn, filelistName)) {
+                args.push_back(filelistName);
+            }
+        }
+        for(std::string fileName : args)
+        {
+            ini::Configuration conf;
+            try
+            {
+                std::ifstream fin(fileName);
+                if (fin.peek() == std::istream::traits_type::eof()) {
+                    std::cout << "Ini file appears empty. Does '" <<
+                              fileName << "' exist?" << std::endl;
+                    continue;
+                }
+                fin >> conf;
+                fin.close();
+            }
+            catch(ini::ParseException& ex)
+            {
+                std::cerr << "Error parsing file: " << fileName << ": " << ex.what() << std::endl;
+                retVal = 1;
+                continue;
+            }
 
-    std::ofstream slay;
-    slay.open("test1.bmp");
-    slay << image;
-    slay.close();
+            img::EasyImage image = generate_image(conf);
+            if(image.get_height() > 0 && image.get_width() > 0)
+            {
+                std::string::size_type pos = fileName.rfind('.');
+                if(pos == std::string::npos)
+                {
+                    //filename does not contain a '.' --> append a '.bmp' suffix
+                    fileName += ".bmp";
+                }
+                else
+                {
+                    fileName = fileName.substr(0,pos) + ".bmp";
+                }
+                try
+                {
+                    std::ofstream f_out(fileName.c_str(),std::ios::trunc | std::ios::out | std::ios::binary);
+                    f_out << image;
+
+                }
+                catch(std::exception& ex)
+                {
+                    std::cerr << "Failed to write image to file: " << ex.what() << std::endl;
+                    retVal = 1;
+                }
+            }
+            else
+            {
+                std::cout << "Could not generate image for " << fileName << std::endl;
+            }
+        }
+    }
+    catch(const std::bad_alloc &exception)
+    {
+        //When you run out of memory this exception is thrown. When this happens the return value of the program MUST be '100'.
+        //Basically this return value tells our automated test scripts to run your engine on a pc with more memory.
+        //(Unless of course you are already consuming the maximum allowed amount of memory)
+        //If your engine does NOT adhere to this requirement you risk losing points because then our scripts will
+        //mark the test as failed while in reality it just needed a bit more memory
+        std::cerr << "Error: insufficient memory" << std::endl;
+        retVal = 100;
+    }
+    return retVal;
 }
