@@ -15,8 +15,8 @@
 using Lines2D = std::list<Line2D>;
 
 img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color drawing_color) {
-    auto backgroundcolor = img::Color(bgc.red*255, bgc.green*255, bgc.blue*255);
-    auto drawingcolor = img::Color(drawing_color.red*255, drawing_color.green*255, drawing_color.blue*255);
+    auto backgroundcolor = bgc.createColor();
+    auto drawingcolor = drawing_color.createColor();
 
     double xmax = 0, xmin = size, ymax = 0, ymin = size;
     for (auto &l: lines){
@@ -52,17 +52,6 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color draw
              (unsigned int)std::lround(l.p2.y),
              drawingcolor
         );
-    }
-    return image;
-    std::list<Point2D> all_points;
-    for (auto& l: lines){
-        auto points = l.get_coordinates();
-        for (auto p: points){
-            all_points.push_back(p);
-        }
-    }
-    for (auto p: all_points){
-        image(p.x, p.y) = drawingcolor;
     }
     return image;
 }
@@ -161,6 +150,11 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         }
         auto image = Draw2DLines(lijntjes, size, bgcolor, color2);
         return image;
+    }
+
+    else if (type == "Wireframe"){
+        auto nrFigures = configuration["General"]["nrFigures"].as_int_or_die();
+        auto eye = configuration["General"]["eye"].as_double_tuple_or_die();
     }
     return img::EasyImage();
 }

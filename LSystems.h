@@ -2,6 +2,7 @@
 #define ENGINE_LSYSTEMS_H
 #include <iostream>
 #include <list>
+#include "easy_image.h"
 
 class Color {
 public:
@@ -11,6 +12,7 @@ public:
 
     explicit Color() : red(0), green(0), blue(0) {}
     Color(double a, double b, double c){red = a; green = b; blue = c;};
+    img::Color createColor();
 };
 
 class Point2D {

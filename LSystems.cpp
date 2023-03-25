@@ -4,6 +4,14 @@
 
 #include "LSystems.h"
 #include <cmath>
+#include <tuple>
+#include <iostream>
+#include <map>
+
+img::Color Color::createColor() {
+    img::Color kleur(this->red*255, this->green*255, this->blue*255);
+    return kleur;
+}
 
 std::list<Point2D> Line2D::get_coordinates() {
     std::list<Point2D> points;
