@@ -1,7 +1,3 @@
-//
-// Created by olivi on 3/7/2023.
-//
-
 #include "LSystems.h"
 #include <cmath>
 #include <tuple>
@@ -70,4 +66,35 @@ std::list<Point2D> Line2D::get_coordinates() {
         return points;
     }
     return points;
+}
+
+void toPolar(const Vector3D &point, double &theta, double &phi, double &r){
+    auto square_root = (point.x*point.x) + (point.y*point.y) + (point.z * point.z);
+    r  = sqrt(square_root);
+    theta = std::atan2(point.y, point.x);
+    phi = std::acos(r);
+}
+
+Matrix eyepointTrans(const Vector3D &eyepoint){
+    double r, phi, theta;
+    toPolar(eyepoint, theta, phi, r);
+
+    Matrix V;
+    V(1,1) = -(sin(theta));
+    V(1,2) = -(cos(theta)* cos(phi));
+    V(1,3) = cos(theta) * sin(phi);
+    V(2,1) = cos(theta);
+    V(2,2) = -(sin(theta) * sin(phi));
+    V(2,3) = sin(theta)*sin(phi);
+    V(3,2) = sin(phi);
+    V(3,3) = cos(phi);
+    V(4,3) = -r;
+    V(4,4) = 1;
+
+    return V;
+}
+
+
+void applyTransformation(Figures3D &figs, const Matrix &m){
+
 }

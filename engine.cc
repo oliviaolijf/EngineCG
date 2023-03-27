@@ -2,14 +2,13 @@
 #include "ini_configuration.h"
 #include "LSystems.h"
 #include "l_parser/l_parser.h"
+#include "vector/vector3d.h"
 
 #define _USE_MATH_DEFINES
 #include <fstream>
 #include <iostream>
-#include <stdexcept>
 #include <string>
 #include <list>
-#include <set>
 #include <cmath>
 
 using Lines2D = std::list<Line2D>;
@@ -54,6 +53,33 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color draw
         );
     }
     return image;
+}
+
+Point2D doProjectionPoint(const Vector3D &point, const double &d){
+    auto xAccent = (d*point.x)/-(point.z);
+    auto yaccent = (d*point.y)/-(point.z);
+    return Point2D(xAccent, yaccent);
+};
+
+Lines2D doProjection(const Figures3D &f){
+    double d = 1;
+    Lines2D lines;
+    for(auto& fig :f){
+        auto faces = fig.faces;
+        for (auto face: faces){
+            int point1 = face.point_indexes[0];
+            int point2 = face.point_indexes[1];
+
+            Vector3D vec1 = fig.points[point1];
+            Vector3D vec2 = fig.points[point2];
+
+            auto p1 = doProjectionPoint(vec1, d);
+            auto p2 = doProjectionPoint(vec2, d);
+
+            Line2D l(p1, p2, fig.color);
+            lines.push_back(l);
+        }
+    }
 }
 
 img::EasyImage generate_image(const ini::Configuration &configuration) {
@@ -153,87 +179,66 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
     }
 
     else if (type == "Wireframe"){
+        Figures3D figures;
         auto nrFigures = configuration["General"]["nrFigures"].as_int_or_die();
         auto eye = configuration["General"]["eye"].as_double_tuple_or_die();
+        for (int i = 0; i < nrFigures; i++){
+            std::string figure_name = "figure" + std::to_string(i);
+            Figure fig;
+            auto secondary_type = configuration[figure_name]["type"].as_string_or_die();
+            auto rotateX = configuration[figure_name]["rotateX"].as_double_or_die();
+            auto rotateY = configuration[figure_name]["rotateY"].as_double_or_die();
+            auto rotateZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+            auto scale = configuration[figure_name]["scale"].as_double_or_die();
+
+            auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+            auto drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+            std::map<int, double> colormap; int cm = 0;
+            for (auto c: drawing_color){
+                colormap[cm] = c;
+                cm++;
+            }
+            Color drawingcolor = Color(colormap[0], colormap[1], colormap[2]);
+
+            auto nrpoints = configuration[figure_name]["nrPoints"].as_int_or_die();
+            auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
+
+            for (int j = 0; j < nrpoints; j++){
+                std::string point_name = "point"+ std::to_string(i);
+                Vector3D point;
+                std::map<int, double> pointmap;
+                int pp = 0;
+                auto point_tuple = configuration[figure_name][point_name].as_double_tuple_or_die();
+                for (auto p: point_tuple){
+                    pointmap[pp] = p;
+                    pp++;
+                }
+                point.x = pointmap[0]; point.y = pointmap[1]; point.z = pointmap[2];
+                fig.points.push_back(point);
+            }
+            for (int j = 0; j < nrlines; j++){
+                std::string line_name = "line"+ std::to_string(j);
+                Face face;
+                auto linetuple = configuration[figure_name][line_name].as_int_tuple_or_die();
+                for (auto l: linetuple){
+                    face.point_indexes.push_back(l);
+                }
+                fig.faces.push_back(face);
+            }
+            fig.color = drawingcolor;
+            figures.push_back(fig);
+        }
+
     }
     return img::EasyImage();
 }
 
 
 int main(int argc, char const *argv[]) {
-    ini::Configuration input;
-    int retVal = 0;
-    try
-    {
-        std::vector<std::string> args = std::vector<std::string>(argv+1, argv+argc);
-        if (args.empty()) {
-            std::ifstream fileIn("filelist");
-            std::string filelistName;
-            while (std::getline(fileIn, filelistName)) {
-                args.push_back(filelistName);
-            }
-        }
-        for(std::string fileName : args)
-        {
-            ini::Configuration conf;
-            try
-            {
-                std::ifstream fin(fileName);
-                if (fin.peek() == std::istream::traits_type::eof()) {
-                    std::cout << "Ini file appears empty. Does '" <<
-                              fileName << "' exist?" << std::endl;
-                    continue;
-                }
-                fin >> conf;
-                fin.close();
-            }
-            catch(ini::ParseException& ex)
-            {
-                std::cerr << "Error parsing file: " << fileName << ": " << ex.what() << std::endl;
-                retVal = 1;
-                continue;
-            }
-
-            img::EasyImage image = generate_image(conf);
-            if(image.get_height() > 0 && image.get_width() > 0)
-            {
-                std::string::size_type pos = fileName.rfind('.');
-                if(pos == std::string::npos)
-                {
-                    //filename does not contain a '.' --> append a '.bmp' suffix
-                    fileName += ".bmp";
-                }
-                else
-                {
-                    fileName = fileName.substr(0,pos) + ".bmp";
-                }
-                try
-                {
-                    std::ofstream f_out(fileName.c_str(),std::ios::trunc | std::ios::out | std::ios::binary);
-                    f_out << image;
-
-                }
-                catch(std::exception& ex)
-                {
-                    std::cerr << "Failed to write image to file: " << ex.what() << std::endl;
-                    retVal = 1;
-                }
-            }
-            else
-            {
-                std::cout << "Could not generate image for " << fileName << std::endl;
-            }
-        }
-    }
-    catch(const std::bad_alloc &exception)
-    {
-        //When you run out of memory this exception is thrown. When this happens the return value of the program MUST be '100'.
-        //Basically this return value tells our automated test scripts to run your engine on a pc with more memory.
-        //(Unless of course you are already consuming the maximum allowed amount of memory)
-        //If your engine does NOT adhere to this requirement you risk losing points because then our scripts will
-        //mark the test as failed while in reality it just needed a bit more memory
-        std::cerr << "Error: insufficient memory" << std::endl;
-        retVal = 100;
-    }
-    return retVal;
+    std::ifstream inputfile;
+    inputfile.open("line_drawings002.ini");
+    ini::Configuration config;
+    inputfile >> config;
+    inputfile.close();
+    generate_image(config);
 }

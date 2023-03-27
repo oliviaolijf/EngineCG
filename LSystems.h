@@ -3,6 +3,7 @@
 #include <iostream>
 #include <list>
 #include "easy_image.h"
+#include "vector/vector3d.h"
 
 class Color {
 public:
@@ -36,4 +37,18 @@ public:
     std::list<Point2D> get_coordinates();
 
 };
+
+class Face{
+public:
+    std::vector<int> point_indexes;
+};
+
+class Figure{
+public:
+    std::vector<Vector3D> points;
+    std::vector<Face> faces;
+    Color color;
+};
+typedef std::list<Figure> Figures3D;
+
 #endif //ENGINE_LSYSTEMS_H
