@@ -3,19 +3,20 @@
 #include "LSystems.h"
 #include "l_parser/l_parser.h"
 #include "vector/vector3d.h"
+#include "LSystems.cpp"
 
-#define _USE_MATH_DEFINES
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <list>
 #include <cmath>
 
+#define M_PI 3.14159265358979
 using Lines2D = std::list<Line2D>;
 
 img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color drawing_color) {
-    auto backgroundcolor = bgc.createColor();
-    auto drawingcolor = drawing_color.createColor();
+    img::Color backgroundcolor(bgc.red*255, bgc.green*255, bgc.blue*255);
+    img::Color drawingcolor(drawing_color.red*255, drawing_color.green*255, drawing_color.blue*255);
 
     double xmax = 0, xmin = size, ymax = 0, ymin = size;
     for (auto &l: lines){
@@ -55,6 +56,31 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color draw
     return image;
 }
 
+void toPolar(const Vector3D &point, double &theta, double &phi, double &r){
+    r = sqrt((point.x*point.x)+(point.y*point.y)+(point.z*point.z));
+    theta = std::atan2(point.y, point.x);
+    phi = std::acos(r);
+}
+
+Matrix eyePointTrans(const Vector3D &eyepoint){
+    double theta, phi ,r;
+    toPolar(eyepoint, theta,phi,r);
+    Matrix V;
+    V(1,1) = -(sin(theta));
+    V(2,1) = cos(theta);
+    V(1,2) = -(cos(theta)) * cos(phi);
+    V(2,2) = -sin(theta)* cos(phi);
+    V(3,2) = sin(phi);
+    V(1,3) = cos(theta)*sin(phi);
+    V(2,3) = sin(theta)*sin(phi);
+    V(3,3) = cos(phi);
+    V(4,3) = -r;
+    V(4,4) = 1;
+    V(1,4) = 0;
+    V(2, 4) = 0;
+    V(3,4) = 0;
+}
+
 Point2D doProjectionPoint(const Vector3D &point, const double &d){
     auto xAccent = (d*point.x)/-(point.z);
     auto yaccent = (d*point.y)/-(point.z);
@@ -70,8 +96,8 @@ Lines2D doProjection(const Figures3D &f){
             int point1 = face.point_indexes[0];
             int point2 = face.point_indexes[1];
 
-            Vector3D vec1 = fig.points[point1];
-            Vector3D vec2 = fig.points[point2];
+            Vector3D vec1 = Vector3D::point(fig.points[point1]);
+            Vector3D vec2 = Vector3D::point(fig.points[point2]);
 
             auto p1 = doProjectionPoint(vec1, d);
             auto p2 = doProjectionPoint(vec2, d);
@@ -80,13 +106,13 @@ Lines2D doProjection(const Figures3D &f){
             lines.push_back(l);
         }
     }
+    return lines;
 }
 
 img::EasyImage generate_image(const ini::Configuration &configuration) {
     auto type = configuration["General"]["type"].as_string_or_die();
     auto size = configuration["General"]["size"].as_int_or_die();
 
-    //achtergrond kleur maken
     auto backgroundcolor = configuration["General"]["backgroundcolor"].as_double_tuple_or_die();
     std::map<int, double> bgcolormap;
     int bgcm = 0;
@@ -117,8 +143,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         auto initiator = lsystem.get_initiator();
         auto iterations = lsystem.get_nr_iterations();
 
-        double angle_rad = (angle * M_PI)/180;
-        double startingangle_rad = (starting_angle * M_PI)/180;
+        double angle_rad = (angle * M_PI) / 180;
+        double startingangle_rad = (starting_angle * M_PI) / 180;
         double tempangle;
 
         int iter = 0;
@@ -129,7 +155,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 if (c != '+' && c != '-' && c != '(' && c != ')') {
                     auto replacement = lsystem.get_replacement(c);
                     temp += replacement;
-                } else{
+                } else {
                     temp += c;
                 }
             }
@@ -151,8 +177,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                     Point2D p2(x, y);
                     Line2D l(p1, p2, color2);
                     lijntjes.push_back(l);
-                }
-                else{
+                } else {
                     x += std::cos(startingangle_rad);
                     y += std::sin(startingangle_rad);
                 }
@@ -160,30 +185,34 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 startingangle_rad += angle_rad;
             } else if (c == '-') {
                 startingangle_rad -= angle_rad;
-            }
-            else if (c == '('){
-                pointend.x = x; pointend.y = y;
+            } else if (c == '(') {
+                pointend.x = x;
+                pointend.y = y;
                 angle_stack.push_back(startingangle_rad);
                 bracket_stack.push_back(pointend);
-            }
-            else if (c == ')'){
+            } else if (c == ')') {
                 Point2D last_point = bracket_stack.back();
                 startingangle_rad = angle_stack.back();
-                x = last_point.x; y = last_point.y;
+                x = last_point.x;
+                y = last_point.y;
                 bracket_stack.pop_back();
                 angle_stack.pop_back();
             }
         }
         auto image = Draw2DLines(lijntjes, size, bgcolor, color2);
         return image;
-    }
-
-    else if (type == "Wireframe"){
+    } else if (type == "Wireframe") {
         Figures3D figures;
         auto nrFigures = configuration["General"]["nrFigures"].as_int_or_die();
+
         auto eye = configuration["General"]["eye"].as_double_tuple_or_die();
-        for (int i = 0; i < nrFigures; i++){
-            std::string figure_name = "figure" + std::to_string(i);
+        std::list<double> eyemap;
+        for (auto e: eye) {eyemap.push_back(e);        }
+        Vector3D eyepoint;
+        eyepoint.x = *eyemap.begin(); eyepoint.y = *eyemap.begin()+1; eyepoint.z = *eyemap.begin()+2;
+
+        for (int i = 0; i < nrFigures; i++) {
+            std::string figure_name = "Figure" + std::to_string(i);
             Figure fig;
             auto secondary_type = configuration[figure_name]["type"].as_string_or_die();
             auto rotateX = configuration[figure_name]["rotateX"].as_double_or_die();
@@ -193,8 +222,9 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
             auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
             auto drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            std::map<int, double> colormap; int cm = 0;
-            for (auto c: drawing_color){
+            std::map<int, double> colormap;
+            int cm = 0;
+            for (auto c: drawing_color) {
                 colormap[cm] = c;
                 cm++;
             }
@@ -203,32 +233,29 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
             auto nrpoints = configuration[figure_name]["nrPoints"].as_int_or_die();
             auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
 
+            auto eyepointMatrix = eyePointTrans(eyepoint);
+
             for (int j = 0; j < nrpoints; j++){
-                std::string point_name = "point"+ std::to_string(i);
-                Vector3D point;
-                std::map<int, double> pointmap;
-                int pp = 0;
-                auto point_tuple = configuration[figure_name][point_name].as_double_tuple_or_die();
-                for (auto p: point_tuple){
-                    pointmap[pp] = p;
-                    pp++;
-                }
-                point.x = pointmap[0]; point.y = pointmap[1]; point.z = pointmap[2];
-                fig.points.push_back(point);
+                std::string point_name = "point"+ std::to_string(j);
+                auto point = configuration[figure_name][point_name].as_double_tuple_or_die();
+                Vector3D pointvec = Vector3D::point(*point.begin(),*point.begin()+1,*point.begin()+2);
+                pointvec.operator*=(eyepointMatrix);
+                fig.points.push_back(pointvec);
             }
-            for (int j = 0; j < nrlines; j++){
+
+            for (int j =0; j<nrlines; j++){
                 std::string line_name = "line"+ std::to_string(j);
+                auto line = configuration[figure_name][line_name].as_int_tuple_or_die();
                 Face face;
-                auto linetuple = configuration[figure_name][line_name].as_int_tuple_or_die();
-                for (auto l: linetuple){
-                    face.point_indexes.push_back(l);
-                }
+                for (auto a: line){ face.point_indexes.push_back(a); }
                 fig.faces.push_back(face);
             }
-            fig.color = drawingcolor;
             figures.push_back(fig);
         }
-
+        Color pink(0.95, 0.45, 0.45);
+        auto lijntjes = doProjection(figures);
+        auto img = Draw2DLines(lijntjes, size, bgcolor, pink);
+        return img;
     }
     return img::EasyImage();
 }
@@ -236,9 +263,14 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 int main(int argc, char const *argv[]) {
     std::ifstream inputfile;
-    inputfile.open("line_drawings002.ini");
+    inputfile.open("line_drawings001.ini");
     ini::Configuration config;
     inputfile >> config;
     inputfile.close();
-    generate_image(config);
+    auto img = generate_image(config);
+
+    std::ofstream out;
+    out.open("out.bmp");
+    out << img;
+    out.close();
 }
