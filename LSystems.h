@@ -38,17 +38,6 @@ public:
 
 };
 
-class Face{
-public:
-    std::vector<int> point_indexes;
-};
-
-class Figure{
-public:
-    std::vector<Vector3D> points;
-    std::vector<Face> faces;
-    Color color;
-};
-typedef std::list<Figure> Figures3D;
+using Lines2D = std::list<Line2D>;
 
 #endif //ENGINE_LSYSTEMS_H

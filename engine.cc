@@ -4,6 +4,7 @@
 #include "l_parser/l_parser.h"
 #include "vector/vector3d.h"
 #include "LSystems.cpp"
+#include "ThreeDeeLines.h"
 
 #include <fstream>
 #include <iostream>
@@ -12,7 +13,6 @@
 #include <cmath>
 
 #define M_PI 3.14159265358979
-using Lines2D = std::list<Line2D>;
 
 img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color drawing_color) {
     img::Color backgroundcolor(bgc.red*255, bgc.green*255, bgc.blue*255);
@@ -56,58 +56,7 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color draw
     return image;
 }
 
-void toPolar(const Vector3D &point, double &theta, double &phi, double &r){
-    r = sqrt((point.x*point.x)+(point.y*point.y)+(point.z*point.z));
-    theta = std::atan2(point.y, point.x);
-    phi = std::acos(r);
-}
 
-Matrix eyePointTrans(const Vector3D &eyepoint){
-    double theta, phi ,r;
-    toPolar(eyepoint, theta,phi,r);
-    Matrix V;
-    V(1,1) = -(sin(theta));
-    V(2,1) = cos(theta);
-    V(1,2) = -(cos(theta)) * cos(phi);
-    V(2,2) = -sin(theta)* cos(phi);
-    V(3,2) = sin(phi);
-    V(1,3) = cos(theta)*sin(phi);
-    V(2,3) = sin(theta)*sin(phi);
-    V(3,3) = cos(phi);
-    V(4,3) = -r;
-    V(4,4) = 1;
-    V(1,4) = 0;
-    V(2, 4) = 0;
-    V(3,4) = 0;
-}
-
-Point2D doProjectionPoint(const Vector3D &point, const double &d){
-    auto xAccent = (d*point.x)/-(point.z);
-    auto yaccent = (d*point.y)/-(point.z);
-    return Point2D(xAccent, yaccent);
-};
-
-Lines2D doProjection(const Figures3D &f){
-    double d = 1;
-    Lines2D lines;
-    for(auto& fig :f){
-        auto faces = fig.faces;
-        for (auto face: faces){
-            int point1 = face.point_indexes[0];
-            int point2 = face.point_indexes[1];
-
-            Vector3D vec1 = Vector3D::point(fig.points[point1]);
-            Vector3D vec2 = Vector3D::point(fig.points[point2]);
-
-            auto p1 = doProjectionPoint(vec1, d);
-            auto p2 = doProjectionPoint(vec2, d);
-
-            Line2D l(p1, p2, fig.color);
-            lines.push_back(l);
-        }
-    }
-    return lines;
-}
 
 img::EasyImage generate_image(const ini::Configuration &configuration) {
     auto type = configuration["General"]["type"].as_string_or_die();
@@ -201,7 +150,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         }
         auto image = Draw2DLines(lijntjes, size, bgcolor, color2);
         return image;
-    } else if (type == "Wireframe") {
+    }
+    else if (type == "Wireframe") {
         Figures3D figures;
         auto nrFigures = configuration["General"]["nrFigures"].as_int_or_die();
 
@@ -234,12 +184,13 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
             auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
 
             auto eyepointMatrix = eyePointTrans(eyepoint);
+            Vector3D eyepointvec = Vector3D::point(*eye.begin(), *eye.begin()+1, *eye.begin()+2);
 
             for (int j = 0; j < nrpoints; j++){
                 std::string point_name = "point"+ std::to_string(j);
                 auto point = configuration[figure_name][point_name].as_double_tuple_or_die();
                 Vector3D pointvec = Vector3D::point(*point.begin(),*point.begin()+1,*point.begin()+2);
-                pointvec.operator*=(eyepointMatrix);
+                pointvec.operator*=(eyepointvec);
                 fig.points.push_back(pointvec);
             }
 
