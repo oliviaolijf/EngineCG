@@ -1,6 +1,4 @@
 #include "ThreeDeeLines.h"
-#include <vector>
-#include <cmath>
 
 void toPolar(const Vector3D &point, double &theta, double &phi, double &r){
     r = sqrt((point.x*point.x)+(point.y*point.y)+(point.z*point.z));
@@ -21,10 +19,7 @@ Matrix eyePointTrans(const Vector3D &eyepoint){
     V(2,3) = sin(theta)*sin(phi);
     V(3,3) = cos(phi);
     V(4,3) = -r;
-    V(4,4) = 1;
-    V(1,4) = 0;
-    V(2, 4) = 0;
-    V(3,4) = 0;
+    return V;
 }
 
 Point2D doProjectionPoint(const Vector3D &point, const double &d){
@@ -37,19 +32,11 @@ Lines2D doProjection(const Figures3D &f){
     double d = 1;
     Lines2D lines;
     for(auto& fig :f){
-        auto faces = fig.faces;
-        for (auto face: faces){
-            int point1 = face.point_indexes[0];
-            int point2 = face.point_indexes[1];
-
-            Vector3D vec1 = Vector3D::point(fig.points[point1]);
-            Vector3D vec2 = Vector3D::point(fig.points[point2]);
-
-            auto p1 = doProjectionPoint(vec1, d);
-            auto p2 = doProjectionPoint(vec2, d);
-
-            Line2D l(p1, p2, fig.color);
-            lines.push_back(l);
+        for (auto face: fig.faces){
+            Line2D line;
+            line.p1 = doProjectionPoint(fig.points[face.point_indexes[0]], d);
+            line.p2 = doProjectionPoint(fig.points[face.point_indexes[1]], d);
+            lines.push_back(line);
         }
     }
     return lines;

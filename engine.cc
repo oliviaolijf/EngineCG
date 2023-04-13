@@ -1,3 +1,7 @@
+#include <fstream>
+#include <iostream>
+#include <cmath>
+
 #include "easy_image.h"
 #include "ini_configuration.h"
 #include "LSystems.h"
@@ -6,11 +10,8 @@
 #include "LSystems.cpp"
 #include "ThreeDeeLines.h"
 
-#include <fstream>
-#include <iostream>
 #include <string>
 #include <list>
-#include <cmath>
 
 #define M_PI 3.14159265358979
 
@@ -155,52 +156,42 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         Figures3D figures;
         auto nrFigures = configuration["General"]["nrFigures"].as_int_or_die();
 
-        auto eye = configuration["General"]["eye"].as_double_tuple_or_die();
-        std::list<double> eyemap;
-        for (auto e: eye) {eyemap.push_back(e);        }
-        Vector3D eyepoint;
-        eyepoint.x = *eyemap.begin(); eyepoint.y = *eyemap.begin()+1; eyepoint.z = *eyemap.begin()+2;
+        std::vector<double> eye = configuration["General"]["eye"].as_double_tuple_or_die();
+        Vector3D eyepoint = Vector3D::point(eye[0], eye[1], eye[2]);
+        auto V = eyePointTrans(eyepoint);
 
         for (int i = 0; i < nrFigures; i++) {
             std::string figure_name = "Figure" + std::to_string(i);
-            Figure fig;
-            auto secondary_type = configuration[figure_name]["type"].as_string_or_die();
             auto rotateX = configuration[figure_name]["rotateX"].as_double_or_die();
             auto rotateY = configuration[figure_name]["rotateY"].as_double_or_die();
             auto rotateZ = configuration[figure_name]["rotateZ"].as_double_or_die();
             auto scale = configuration[figure_name]["scale"].as_double_or_die();
-
-            auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-            auto drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            std::map<int, double> colormap;
-            int cm = 0;
-            for (auto c: drawing_color) {
-                colormap[cm] = c;
-                cm++;
-            }
-            Color drawingcolor = Color(colormap[0], colormap[1], colormap[2]);
-
             auto nrpoints = configuration[figure_name]["nrPoints"].as_int_or_die();
             auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
 
+            std::vector<double> center = configuration[figure_name]["center"].as_double_tuple_or_die();
+            std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+            Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+
+
             auto eyepointMatrix = eyePointTrans(eyepoint);
             Vector3D eyepointvec = Vector3D::point(*eye.begin(), *eye.begin()+1, *eye.begin()+2);
-
+            Figure fig;
             for (int j = 0; j < nrpoints; j++){
                 std::string point_name = "point"+ std::to_string(j);
-                auto point = configuration[figure_name][point_name].as_double_tuple_or_die();
-                Vector3D pointvec = Vector3D::point(*point.begin(),*point.begin()+1,*point.begin()+2);
-                pointvec.operator*=(eyepointvec);
-                fig.points.push_back(pointvec);
+                std::vector<double> point = configuration[figure_name][point_name].as_double_tuple_or_die();
+                fig.points.push_back(Vector3D::point(point[0], point[1], point[2]));
+
             }
 
             for (int j =0; j<nrlines; j++){
                 std::string line_name = "line"+ std::to_string(j);
-                auto line = configuration[figure_name][line_name].as_int_tuple_or_die();
+                std::vector<int> line = configuration[figure_name][line_name].as_int_tuple_or_die();
                 Face face;
                 for (auto a: line){ face.point_indexes.push_back(a); }
                 fig.faces.push_back(face);
             }
+            for (auto b: fig.points){b *= V;}
             figures.push_back(fig);
         }
         Color pink(0.95, 0.45, 0.45);
@@ -213,7 +204,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 
 int main(int argc, char const *argv[]) {
-    std::ifstream inputfile;
+    std::ifstream inputfile ;
     inputfile.open("line_drawings001.ini");
     ini::Configuration config;
     inputfile >> config;

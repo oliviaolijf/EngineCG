@@ -3,6 +3,7 @@
 
 #include "LSystems.h"
 #include "vector/vector3d.h"
+#include <cmath>
 
 
 class Face{
@@ -17,5 +18,10 @@ public:
     Color color;
 };
 typedef std::list<Figure> Figures3D;
+
+void toPolar(const Vector3D &point, double &theta, double &phi, double &r);
+Matrix eyePointTrans(const Vector3D &eyepoint);
+Point2D doProjectionPoint(const Vector3D &point, const double &d);
+Lines2D doProjection(const Figures3D &f);
 
 #endif //ENGINE_THREEDEELINES_H
