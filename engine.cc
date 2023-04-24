@@ -64,13 +64,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
     auto size = configuration["General"]["size"].as_int_or_die();
 
     auto backgroundcolor = configuration["General"]["backgroundcolor"].as_double_tuple_or_die();
-    std::map<int, double> bgcolormap;
-    int bgcm = 0;
-    for (auto c: backgroundcolor) {
-        bgcolormap[bgcm] = c;
-        bgcm++;
-    }
-    Color bgcolor(bgcolormap[0], bgcolormap[1], bgcolormap[2]);
+    Color bgcolor(backgroundcolor[0], backgroundcolor[1], backgroundcolor[2]);
 
     if (type == "2DLSystem") {
         auto inputfile = configuration["2DLSystem"]["inputfile"].as_string_or_die();
@@ -152,6 +146,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         auto image = Draw2DLines(lijntjes, size, bgcolor, color2);
         return image;
     }
+
     else if (type == "Wireframe") {
         Figures3D figures;
         auto nrFigures = configuration["General"]["nrFigures"].as_int_or_die();
@@ -173,17 +168,12 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
             std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
             Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
 
-
-            auto eyepointMatrix = eyePointTrans(eyepoint);
-            Vector3D eyepointvec = Vector3D::point(*eye.begin(), *eye.begin()+1, *eye.begin()+2);
             Figure fig;
             for (int j = 0; j < nrpoints; j++){
                 std::string point_name = "point"+ std::to_string(j);
                 std::vector<double> point = configuration[figure_name][point_name].as_double_tuple_or_die();
                 fig.points.push_back(Vector3D::point(point[0], point[1], point[2]));
-
             }
-
             for (int j =0; j<nrlines; j++){
                 std::string line_name = "line"+ std::to_string(j);
                 std::vector<int> line = configuration[figure_name][line_name].as_int_tuple_or_die();
@@ -194,7 +184,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
             for (auto b: fig.points){b *= V;}
             figures.push_back(fig);
         }
-        Color pink(0.95, 0.45, 0.45);
+        Color pink(0.4, 0.7, 0.4);
         auto lijntjes = doProjection(figures);
         auto img = Draw2DLines(lijntjes, size, bgcolor, pink);
         return img;
@@ -204,15 +194,14 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 
 int main(int argc, char const *argv[]) {
-    std::ifstream inputfile ;
-    inputfile.open("line_drawings001.ini");
-    ini::Configuration config;
-    inputfile >> config;
-    inputfile.close();
-    auto img = generate_image(config);
+    ini::Configuration conf;
+    std::ifstream open;
+    open.open("line_drawings027.ini");
+    open >> conf;
+    open.close();
 
     std::ofstream out;
     out.open("out.bmp");
-    out << img;
+    out << generate_image(conf);
     out.close();
 }
