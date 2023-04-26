@@ -9,6 +9,7 @@
 #include "vector/vector3d.h"
 #include "LSystems.cpp"
 #include "ThreeDeeLines.h"
+#include "3DFigures.cpp"
 
 #include <string>
 #include <list>
@@ -156,40 +157,58 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
         for (int i = 0; i < nrFigures; i++) {
             std::string figure_name = "Figure" + std::to_string(i);
+            auto type2 = configuration[figure_name][type].as_string_or_die();
 
-            auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
-            auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
-            auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
-            auto scal = configuration[figure_name]["scale"].as_double_or_die();
-            auto rotX = rotateX((rotatX*M_PI)/180);
-            auto rotY = rotateY((rotatY*M_PI)/180);
-            auto rotZ = rotateZ((rotatZ*M_PI)/180);
-            auto scale = scaleFigure(scal);
-            auto allTrans = rotX * rotZ * rotY * scale * V;
+            if (type2 == "LineDrawing") {
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * V;
 
-            auto nrpoints = configuration[figure_name]["nrPoints"].as_int_or_die();
-            auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
+                auto nrpoints = configuration[figure_name]["nrPoints"].as_int_or_die();
+                auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
 
-            std::vector<double> center = configuration[figure_name]["center"].as_double_tuple_or_die();
-            std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                std::vector<double> center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
 
-            Figure fig;
-            for (int j = 0; j < nrpoints; j++){
-                std::string point_name = "point"+ std::to_string(j);
-                std::vector<double> point = configuration[figure_name][point_name].as_double_tuple_or_die();
-                fig.points.push_back(Vector3D::point(point[0], point[1], point[2]));
+                Figure fig;
+                for (int j = 0; j < nrpoints; j++) {
+                    std::string point_name = "point" + std::to_string(j);
+                    std::vector<double> point = configuration[figure_name][point_name].as_double_tuple_or_die();
+                    fig.points.push_back(Vector3D::point(point[0], point[1], point[2]));
+                }
+                for (int j = 0; j < nrlines; j++) {
+                    std::string line_name = "line" + std::to_string(j);
+                    std::vector<int> line = configuration[figure_name][line_name].as_int_tuple_or_die();
+                    Face face;
+                    for (auto a: line) { face.point_indexes.push_back(a); }
+                    fig.faces.push_back(face);
+                }
+                fig.color = drawingcolor;
+                applyTransformation(fig, allTrans);
+                figures.push_back(fig);
             }
-            for (int j =0; j<nrlines; j++){
-                std::string line_name = "line"+ std::to_string(j);
-                std::vector<int> line = configuration[figure_name][line_name].as_int_tuple_or_die();
-                Face face;
-                for (auto a: line){ face.point_indexes.push_back(a); }
-                fig.faces.push_back(face);
+            else if (type2 == "Cube"){
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
             }
-            fig.color = drawingcolor;
-            applyTransformation(fig, allTrans);
-            figures.push_back(fig);
         }
         auto lijntjes = doProjection(figures);
         auto img = Draw2DLines(lijntjes, size, bgcolor);

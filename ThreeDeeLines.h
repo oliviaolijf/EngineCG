@@ -8,6 +8,7 @@
 
 class Face{
 public:
+    Face(std::vector<int> points) {point_indexes = points;};
     std::vector<int> point_indexes;
 };
 
