@@ -15,9 +15,8 @@
 
 #define M_PI 3.14159265358979
 
-img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color drawing_color) {
+img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc) {
     img::Color backgroundcolor(bgc.red*255, bgc.green*255, bgc.blue*255);
-    img::Color drawingcolor(drawing_color.red*255, drawing_color.green*255, drawing_color.blue*255);
 
     double xmax = 0, xmin = size, ymax = 0, ymin = size;
     for (auto &l: lines){
@@ -51,7 +50,7 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, Color draw
              (unsigned int)std::lround(l.p1.y),
              (unsigned int)std::lround(l.p2.x),
              (unsigned int)std::lround(l.p2.y),
-             drawingcolor
+             img::Color(l.color.red*255, l.color.green*255, l.color.blue*255)
         );
     }
     return image;
@@ -143,7 +142,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 angle_stack.pop_back();
             }
         }
-        auto image = Draw2DLines(lijntjes, size, bgcolor, color2);
+        auto image = Draw2DLines(lijntjes, size, bgcolor);
         return image;
     }
 
@@ -157,10 +156,17 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
         for (int i = 0; i < nrFigures; i++) {
             std::string figure_name = "Figure" + std::to_string(i);
-            auto rotateX = configuration[figure_name]["rotateX"].as_double_or_die();
-            auto rotateY = configuration[figure_name]["rotateY"].as_double_or_die();
-            auto rotateZ = configuration[figure_name]["rotateZ"].as_double_or_die();
-            auto scale = configuration[figure_name]["scale"].as_double_or_die();
+
+            auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+            auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+            auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+            auto scal = configuration[figure_name]["scale"].as_double_or_die();
+            auto rotX = rotateX(rotatX);
+            auto rotY = rotateY(rotatY);
+            auto rotZ = rotateZ(rotatZ);
+            auto scale = scaleFigure(scal);
+            auto allTrans = rotX * rotZ * rotY * scale * V;
+
             auto nrpoints = configuration[figure_name]["nrPoints"].as_int_or_die();
             auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
 
@@ -181,12 +187,12 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 for (auto a: line){ face.point_indexes.push_back(a); }
                 fig.faces.push_back(face);
             }
-            for (auto b: fig.points){b *= V;}
+            fig.color = drawingcolor;
+            applyTransformation(fig, allTrans);
             figures.push_back(fig);
         }
-        Color pink(0.4, 0.7, 0.4);
         auto lijntjes = doProjection(figures);
-        auto img = Draw2DLines(lijntjes, size, bgcolor, pink);
+        auto img = Draw2DLines(lijntjes, size, bgcolor);
         return img;
     }
     return img::EasyImage();
@@ -194,14 +200,78 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 
 int main(int argc, char const *argv[]) {
-    ini::Configuration conf;
-    std::ifstream open;
-    open.open("line_drawings027.ini");
-    open >> conf;
-    open.close();
+    int retVal = 0;
+    try
+    {
+        std::vector<std::string> args = std::vector<std::string>(argv+1, argv+argc);
+        if (args.empty()) {
+            std::ifstream fileIn("filelist");
+            std::string filelistName;
+            while (std::getline(fileIn, filelistName)) {
+                args.push_back(filelistName);
+            }
+        }
+        for(std::string fileName : args)
+        {
+            ini::Configuration conf;
+            try
+            {
+                std::ifstream fin(fileName);
+                if (fin.peek() == std::istream::traits_type::eof()) {
+                    std::cout << "Ini file appears empty. Does '" <<
+                              fileName << "' exist?" << std::endl;
+                    continue;
+                }
+                fin >> conf;
+                fin.close();
+            }
+            catch(ini::ParseException& ex)
+            {
+                std::cerr << "Error parsing file: " << fileName << ": " << ex.what() << std::endl;
+                retVal = 1;
+                continue;
+            }
 
-    std::ofstream out;
-    out.open("out.bmp");
-    out << generate_image(conf);
-    out.close();
+            img::EasyImage image = generate_image(conf);
+            if(image.get_height() > 0 && image.get_width() > 0)
+            {
+                std::string::size_type pos = fileName.rfind('.');
+                if(pos == std::string::npos)
+                {
+                    //filename does not contain a '.' --> append a '.bmp' suffix
+                    fileName += ".bmp";
+                }
+                else
+                {
+                    fileName = fileName.substr(0,pos) + ".bmp";
+                }
+                try
+                {
+                    std::ofstream f_out(fileName.c_str(),std::ios::trunc | std::ios::out | std::ios::binary);
+                    f_out << image;
+
+                }
+                catch(std::exception& ex)
+                {
+                    std::cerr << "Failed to write image to file: " << ex.what() << std::endl;
+                    retVal = 1;
+                }
+            }
+            else
+            {
+                std::cout << "Could not generate image for " << fileName << std::endl;
+            }
+        }
+    }
+    catch(const std::bad_alloc &exception)
+    {
+        //When you run out of memory this exception is thrown. When this happens the return value of the program MUST be '100'.
+        //Basically this return value tells our automated test scripts to run your engine on a pc with more memory.
+        //(Unless of course you are already consuming the maximum allowed amount of memory)
+        //If your engine does NOT adhere to this requirement you risk losing points because then our scripts will
+        //mark the test as failed while in reality it just needed a bit more memory
+        std::cerr << "Error: insufficient memory" << std::endl;
+        retVal = 100;
+    }
+    return retVal;
 }

@@ -24,7 +24,7 @@ Matrix eyePointTrans(const Vector3D &eyepoint){
 
 Point2D doProjectionPoint(const Vector3D &point, const double &d){
     auto z = point.z;
-    if (point.z ==0){
+    if (point.z == 0){
         z = 1;
     }
     auto xAccent = d*point.x/-z;
@@ -40,6 +40,7 @@ Lines2D doProjection(const Figures3D &f){
             Line2D line;
             line.p1 = doProjectionPoint(fig.points[face.point_indexes[0]], d);
             line.p2 = doProjectionPoint(fig.points[face.point_indexes[1]], d);
+            line.color = fig.color;
             lines.push_back(line);
         }
     }
@@ -64,7 +65,7 @@ Matrix rotateX(const double angle){
     return Mx;
 }
 
-Matrix rotateZ(const double angle){
+Matrix rotateY(const double angle){
     Matrix My;
     My(1,1) = cos(angle);
     My(1,3) = -sin(angle);
@@ -75,7 +76,7 @@ Matrix rotateZ(const double angle){
     return My;
 }
 
-Matrix RotateZ(const double angle){
+Matrix rotateZ(const double angle){
     Matrix Mz;
     Mz(1,1) = cos(angle);
     Mz(1,2) = sin(angle);
@@ -96,5 +97,7 @@ Matrix translate(const Vector3D &vector){
 }
 
 void applyTransformation(Figure &f, const Matrix &m){
-
+    for (auto &p: f.points){
+        p *= m;
+    }
 }
