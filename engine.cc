@@ -161,9 +161,9 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
             auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
             auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
             auto scal = configuration[figure_name]["scale"].as_double_or_die();
-            auto rotX = rotateX(rotatX);
-            auto rotY = rotateY(rotatY);
-            auto rotZ = rotateZ(rotatZ);
+            auto rotX = rotateX((rotatX*M_PI)/180);
+            auto rotY = rotateY((rotatY*M_PI)/180);
+            auto rotZ = rotateZ((rotatZ*M_PI)/180);
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * V;
 
