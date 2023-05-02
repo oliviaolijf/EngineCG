@@ -164,16 +164,20 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
                 auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
                 auto rotX = rotateX((rotatX * M_PI) / 180);
                 auto rotY = rotateY((rotatY * M_PI) / 180);
                 auto rotZ = rotateZ((rotatZ * M_PI) / 180);
                 auto scale = scaleFigure(scal);
-                auto allTrans = rotX * rotZ * rotY * scale * V;
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
                 auto nrpoints = configuration[figure_name]["nrPoints"].as_int_or_die();
                 auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
 
-                std::vector<double> center = configuration[figure_name]["center"].as_double_tuple_or_die();
                 std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
                 Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
 
@@ -199,11 +203,16 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
                 auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
                 auto rotX = rotateX((rotatX * M_PI) / 180);
                 auto rotY = rotateY((rotatY * M_PI) / 180);
                 auto rotZ = rotateZ((rotatZ * M_PI) / 180);
                 auto scale = scaleFigure(scal);
-                auto allTrans = rotX * rotZ * rotY * scale * V;
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
                 auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
                 Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
@@ -212,6 +221,76 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 applyTransformation(cube, allTrans);
                 figures.push_back(cube);
             }
+            else if (type2 == "Tetrahedron"){
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateTetrahedron(figureColor);
+                applyTransformation(cube, allTrans);
+                figures.push_back(cube);
+            }
+            else if (type2 == "Octahedron"){
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateOctahedron(figureColor);
+                applyTransformation(cube, allTrans);
+                figures.push_back(cube);
+            }
+            else if (type2 == "Icosahedron"){
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateIcosahedron(figureColor);
+                applyTransformation(cube, allTrans);
+                figures.push_back(cube);
+            }
+
         }
         auto lijntjes = doProjection(figures);
         auto img = Draw2DLines(lijntjes, size, bgcolor);
@@ -222,18 +301,78 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 
 int main(int argc, char const *argv[]) {
-    std::ifstream input;
-    ini::Configuration conf;
-    input.open("wireframes001.ini");
-    input >> conf;
+    int retVal = 0;
+    try
+    {
+        std::vector<std::string> args = std::vector<std::string>(argv+1, argv+argc);
+        if (args.empty()) {
+            std::ifstream fileIn("filelist");
+            std::string filelistName;
+            while (std::getline(fileIn, filelistName)) {
+                args.push_back(filelistName);
+            }
+        }
+        for(std::string fileName : args)
+        {
+            ini::Configuration conf;
+            try
+            {
+                std::ifstream fin(fileName);
+                if (fin.peek() == std::istream::traits_type::eof()) {
+                    std::cout << "Ini file appears empty. Does '" <<
+                              fileName << "' exist?" << std::endl;
+                    continue;
+                }
+                fin >> conf;
+                fin.close();
+            }
+            catch(ini::ParseException& ex)
+            {
+                std::cerr << "Error parsing file: " << fileName << ": " << ex.what() << std::endl;
+                retVal = 1;
+                continue;
+            }
 
-    auto img = generate_image(conf);
+            img::EasyImage image = generate_image(conf);
+            if(image.get_height() > 0 && image.get_width() > 0)
+            {
+                std::string::size_type pos = fileName.rfind('.');
+                if(pos == std::string::npos)
+                {
+                    //filename does not contain a '.' --> append a '.bmp' suffix
+                    fileName += ".bmp";
+                }
+                else
+                {
+                    fileName = fileName.substr(0,pos) + ".bmp";
+                }
+                try
+                {
+                    std::ofstream f_out(fileName.c_str(),std::ios::trunc | std::ios::out | std::ios::binary);
+                    f_out << image;
 
-    std::ofstream out;
-    out.open("out.bmp");
-    out << img;
-    out.close();
-
-    return 0;
-
+                }
+                catch(std::exception& ex)
+                {
+                    std::cerr << "Failed to write image to file: " << ex.what() << std::endl;
+                    retVal = 1;
+                }
+            }
+            else
+            {
+                std::cout << "Could not generate image for " << fileName << std::endl;
+            }
+        }
+    }
+    catch(const std::bad_alloc &exception)
+    {
+        //When you run out of memory this exception is thrown. When this happens the return value of the program MUST be '100'.
+        //Basically this return value tells our automated test scripts to run your engine on a pc with more memory.
+        //(Unless of course you are already consuming the maximum allowed amount of memory)
+        //If your engine does NOT adhere to this requirement you risk losing points because then our scripts will
+        //mark the test as failed while in reality it just needed a bit more memory
+        std::cerr << "Error: insufficient memory" << std::endl;
+        retVal = 100;
+    }
+    return retVal;
 }

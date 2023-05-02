@@ -31,7 +31,7 @@ Matrix rotateZ(const double angle);
 Matrix translate(const Vector3D &vector);
 void applyTransformation(Figure &f, const Matrix &m);
 
-Point2D doProjectionPoint(const Vector3D &point, const double &d);
+Point2D doProjection(const Vector3D &point, const double &d);
 Lines2D doProjection(const Figures3D &f);
 
 #endif //ENGINE_THREEDEELINES_H

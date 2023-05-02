@@ -96,7 +96,6 @@ Matrix translate(const Vector3D &vector){
     T(4,1) = vector.x;
     T(4,2)= vector.y;
     T(4,3) = vector.z;
-
     return T;
 }
 
