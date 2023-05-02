@@ -37,12 +37,20 @@ Lines2D doProjection(const Figures3D &f){
     double d = 1;
     Lines2D lines;
     for(auto& fig :f){
-        for (auto face: fig.faces){
-            Line2D line;
-            line.p1 = doProjectionPoint(fig.points[face.point_indexes[0]], d);
-            line.p2 = doProjectionPoint(fig.points[face.point_indexes[1]], d);
-            line.color = fig.color;
-            lines.push_back(line);
+        for (auto face: fig.faces) {
+            for (int i = 0; i < face.point_indexes.size() - 1; i++) {
+                Line2D line;
+                if (i == face.point_indexes.size() - 1) {
+                    line.p1 = doProjectionPoint(fig.points[face.point_indexes[i]], d);
+                    line.p2 = doProjectionPoint(fig.points[face.point_indexes[0]], d);
+                }
+                else{
+                    line.p1 = doProjectionPoint(fig.points[face.point_indexes[i]], d);
+                    line.p2 = doProjectionPoint(fig.points[face.point_indexes[i+1]], d);
+                }
+                line.color = fig.color;
+                lines.push_back(line);
+            }
         }
     }
     return lines;
