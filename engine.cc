@@ -290,6 +290,190 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 applyTransformation(cube, allTrans);
                 figures.push_back(cube);
             }
+            else if (type2 == "Dodecahedron"){
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateDodecahedron(figureColor);
+                applyTransformation(cube, allTrans);
+                figures.push_back(cube);
+            }
+            else if (type2 == "Sphere"){
+                auto iterations = configuration[figure_name]["n"].as_int_or_die();
+
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto sphere = generateSphere(figureColor, iterations);
+                applyTransformation(sphere, allTrans);
+                figures.push_back(sphere);
+            }
+            else if (type2 == "Cone"){
+                auto iterations = configuration[figure_name]["n"].as_int_or_die();
+                auto height = configuration[figure_name]["height"].as_double_or_die();
+
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto sphere = generateCone(figureColor, iterations, height);
+                applyTransformation(sphere, allTrans);
+                figures.push_back(sphere);
+            }
+            else if (type2 == "Cylinder"){
+                auto iterations = configuration[figure_name]["n"].as_int_or_die();
+                auto height = configuration[figure_name]["height"].as_double_or_die();
+
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto sphere = generateCylinder(figureColor, iterations, height);
+                applyTransformation(sphere, allTrans);
+                figures.push_back(sphere);
+            }
+            else if (type2 == "Torus"){
+                auto r = configuration[figure_name]["r"].as_double_or_die();
+                auto R = configuration[figure_name]["R"].as_double_or_die();
+                auto n = configuration[figure_name]["n"].as_double_or_die();
+                auto m = configuration[figure_name]["m"].as_double_or_die();
+
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto sphere = generateTorus(figureColor, r, R, n ,m);
+                applyTransformation(sphere, allTrans);
+                figures.push_back(sphere);
+            }
+            else if (type2 == "3DLSystem"){
+                Figure fig;
+                auto inputfile = configuration[figure_name]["inputfile"].as_string_or_die();
+                std::ifstream input(inputfile);
+                LParser::LSystem3D lsystem(input);
+                input.close();
+
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto alfabet = lsystem.get_alphabet();
+                std::string initiator = lsystem.get_initiator();
+                auto angle = lsystem.get_angle();
+                auto iterations = lsystem.get_nr_iterations();
+
+                angle = angle*M_PI/180;
+
+                Vector3D curp = Vector3D::point(0,0,0);
+                Vector3D H = Vector3D::point(1,0,0);
+                Vector3D L = Vector3D::point(0,1,0);
+                Vector3D U = Vector3D::point(0,0,1);
+
+                int counter = 0;
+                std::vector<Vector3D> pointstack;
+                std::vector<Vector3D> Hstack;
+                std::vector<Vector3D> Lstack;
+                std::vector<Vector3D> Ustack;
+
+                fig.points.push_back(curp);
+
+                for (int i = 0; i < iterations; i++){
+                    std::string temp;
+                    for (auto s: initiator){
+                        if (s == '+') temp+="+";
+                        else if (s == '-') temp+="-";
+                        else if (s == '^') temp +="^";
+                        else if (s == '&') temp+="&";
+                        else if (s == '\\') temp +="\\"
+                    }
+                }
+            }
 
         }
         auto lijntjes = doProjection(figures);
