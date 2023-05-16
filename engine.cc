@@ -16,7 +16,7 @@
 
 #define M_PI 3.14159265358979
 
-img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc) {
+img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, bool zbuffer) {
     img::Color backgroundcolor(bgc.red*255, bgc.green*255, bgc.blue*255);
 
     double xmax = 0, xmin = size, ymax = 0, ymin = size;
@@ -41,18 +41,35 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc) {
     auto dcy = (imagey/2)-DCy;
     img::EasyImage image(imagex, imagey, backgroundcolor);
 
-    for (auto& l: lines){
-        l.p1.x = (l.p1.x * d) + dcx;
-        l.p2.x = (l.p2.x * d) + dcx;
-        l.p1.y = (l.p1.y * d) + dcy;
-        l.p2.y = (l.p2.y * d) + dcy;
-        image.draw_line(
-             (unsigned int)std::lround(l.p1.x),
-             (unsigned int)std::lround(l.p1.y),
-             (unsigned int)std::lround(l.p2.x),
-             (unsigned int)std::lround(l.p2.y),
-             img::Color(l.color.red*255, l.color.green*255, l.color.blue*255)
-        );
+    if (!zbuffer) {
+        for (auto &l: lines) {
+            l.p1.x = (l.p1.x * d) + dcx;
+            l.p2.x = (l.p2.x * d) + dcx;
+            l.p1.y = (l.p1.y * d) + dcy;
+            l.p2.y = (l.p2.y * d) + dcy;
+            image.draw_line(
+                    (unsigned int) std::lround(l.p1.x),
+                    (unsigned int) std::lround(l.p1.y),
+                    (unsigned int) std::lround(l.p2.x),
+                    (unsigned int) std::lround(l.p2.y),
+                    img::Color(l.color.red * 255, l.color.green * 255, l.color.blue * 255)
+            );
+        }
+    }
+    else if(zbuffer){
+        for (auto &l: lines) {
+            l.p1.x = (l.p1.x * d) + dcx;
+            l.p2.x = (l.p2.x * d) + dcx;
+            l.p1.y = (l.p1.y * d) + dcy;
+            l.p2.y = (l.p2.y * d) + dcy;
+            image.draw_line(
+                    (unsigned int) std::lround(l.p1.x),
+                    (unsigned int) std::lround(l.p1.y),
+                    (unsigned int) std::lround(l.p2.x),
+                    (unsigned int) std::lround(l.p2.y),
+                    img::Color(l.color.red * 255, l.color.green * 255, l.color.blue * 255)
+            );
+        }
     }
     return image;
 }
@@ -197,7 +214,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 fig.color = drawingcolor;
                 applyTransformation(fig, allTrans);
                 figures.push_back(fig);
-            } else if (type2 == "Cube") {
+            }
+            else if (type2 == "Cube") {
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
@@ -219,7 +237,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto cube = generateCube(figureColor);
                 applyTransformation(cube, allTrans);
                 figures.push_back(cube);
-            } else if (type2 == "Tetrahedron") {
+            }
+            else if (type2 == "Tetrahedron") {
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
@@ -241,7 +260,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto cube = generateTetrahedron(figureColor);
                 applyTransformation(cube, allTrans);
                 figures.push_back(cube);
-            } else if (type2 == "Octahedron") {
+            }
+            else if (type2 == "Octahedron") {
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
@@ -263,7 +283,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto cube = generateOctahedron(figureColor);
                 applyTransformation(cube, allTrans);
                 figures.push_back(cube);
-            } else if (type2 == "Icosahedron") {
+            }
+            else if (type2 == "Icosahedron") {
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
@@ -285,7 +306,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto cube = generateIcosahedron(figureColor);
                 applyTransformation(cube, allTrans);
                 figures.push_back(cube);
-            } else if (type2 == "Dodecahedron") {
+            }
+            else if (type2 == "Dodecahedron") {
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
@@ -307,7 +329,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto cube = generateDodecahedron(figureColor);
                 applyTransformation(cube, allTrans);
                 figures.push_back(cube);
-            } else if (type2 == "Sphere") {
+            }
+            else if (type2 == "Sphere") {
                 auto iterations = configuration[figure_name]["n"].as_int_or_die();
 
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
@@ -331,7 +354,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto sphere = generateSphere(figureColor, iterations);
                 applyTransformation(sphere, allTrans);
                 figures.push_back(sphere);
-            } else if (type2 == "Cone") {
+            }
+            else if (type2 == "Cone") {
                 auto iterations = configuration[figure_name]["n"].as_int_or_die();
                 auto height = configuration[figure_name]["height"].as_double_or_die();
 
@@ -356,7 +380,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto sphere = generateCone(figureColor, iterations, height);
                 applyTransformation(sphere, allTrans);
                 figures.push_back(sphere);
-            } else if (type2 == "Cylinder") {
+            }
+            else if (type2 == "Cylinder") {
                 auto iterations = configuration[figure_name]["n"].as_int_or_die();
                 auto height = configuration[figure_name]["height"].as_double_or_die();
 
@@ -381,7 +406,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto sphere = generateCylinder(figureColor, iterations, height);
                 applyTransformation(sphere, allTrans);
                 figures.push_back(sphere);
-            } else if (type2 == "Torus") {
+            }
+            else if (type2 == "Torus") {
                 auto r = configuration[figure_name]["r"].as_double_or_die();
                 auto R = configuration[figure_name]["R"].as_double_or_die();
                 auto n = configuration[figure_name]["n"].as_double_or_die();
@@ -408,7 +434,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto sphere = generateTorus(figureColor, r, R, n, m);
                 applyTransformation(sphere, allTrans);
                 figures.push_back(sphere);
-            } else if (type2 == "3DLSystem") {
+            }
+            else if (type2 == "3DLSystem") {
                 Figure fig;
                 auto inputfile = configuration[figure_name]["inputfile"].as_string_or_die();
                 std::ifstream input(inputfile);
@@ -438,7 +465,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto angle = lsystem.get_angle();
                 auto iterations = lsystem.get_nr_iterations();
 
-                angle = angle * M_PI / 180;
+                angle = (angle * M_PI) / 180;
 
                 int pointcounter = 0;
 
@@ -450,12 +477,12 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 fig.points.push_back(curp);
 
                 int counter = 0;
-                std::vector<Vector3D> pointstack;
-                std::vector<Vector3D> Hstack; // x-as
-                std::vector<Vector3D> Lstack; // y-as
-                std::vector<Vector3D> Ustack; // z-as
+                std::list<Vector3D> pointstack;
+                std::list<Vector3D> Hstack;
+                std::list<Vector3D> Lstack;
+                std::list<Vector3D> Ustack;
 
-                for (int i = 0; i < iterations; i++) {
+                for (int it = 0; it < iterations; it++) {
                     std::string temp;
                     for (auto &s: initiator) {
                         if (s == '+') temp += "+";
@@ -465,14 +492,10 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         else if (s == '\\') temp += "\\";
                         else if (s == '/') temp += "/";
                         else if (s == '|') temp += "|";
-                        else if (alfabet.count(s)) {
-                            auto m = lsystem.get_replacement(s);
-                            temp += m;
-                        }
+                        else if (alfabet.count(s)) temp += lsystem.get_replacement(s);
                     }
                     initiator = temp;
                 }
-                auto test = initiator.length();
                 for (auto &c: initiator) {
                     if (alfabet.count(c)) {
                         if (lsystem.draw(c)) {
@@ -484,61 +507,73 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         } else {
                             curp += H;
                         }
-                    } if (c == '+') {
+                        continue;
+                    }
+                    if (c == '+') {
                         auto temp = H;
-                        H = (H*cos(angle)) + (L* sin(angle));
+                        H = (H*cos(angle)) + (L*sin(angle));
                         L = -(temp*sin(angle)) + (L*cos(angle));
+                        continue;
                     }
                     if (c == '-') {
                         auto temp = H;
                         H = (H*cos(-angle)) + (L* sin(-angle));
                         L = -(temp*sin(-angle)) + (L*cos(-angle));
+                        continue;
                     }
-                    if (c == '^'){
+                   if (c == '^'){
                         auto temp = H;
                         H = (H*cos(angle)) + (U* sin(angle));
-                        U = (temp*sin(angle)) + (U*cos(angle));
+                        U = -(temp*sin(angle)) + (U*cos(angle));
+                       continue;
                     }
                     if (c == '&') {
                         auto temp = H;
                         H = (H* cos(-angle)) + (U* sin(-angle));
-                        U = (temp* sin(-angle)) + (U*cos(-angle));
+                        U = -(temp* sin(-angle)) + (U*cos(-angle));
+                        continue;
                     }
                     if (c == '\\'){
                         auto temp = L;
                         L = (L* cos(angle)) - (U*sin(angle));
                         U = (temp*sin(angle)) + (U* cos(angle));
+                        continue;
                     }
                     if (c == '/'){
                         auto temp = L;
                         L = (L*cos(-angle)) - (U* sin(-angle));
                         U = (temp*sin(-angle)) + (U*cos(-angle));
+                        continue;
                     }
                     if (c == '|'){
                         H = -H;
                         L = -L;
+                        continue;
                     }
                     if (c == '('){
                         pointstack.push_back(curp);
                         Hstack.push_back(H);
                         Lstack.push_back(L);
                         Ustack.push_back(U);
+                        continue;
                     }
                     if (c == ')'){
-                        curp = pointstack[pointstack.size()-1];
-                        pointstack.erase(pointstack.end());
+                        curp = pointstack.back();
+                        pointstack.pop_back();
 
-                        H =  Hstack[Hstack.size()-1];
-                        Hstack.erase(Hstack.end());
+                        H =  Hstack.back();
+                        Hstack.pop_back();
 
-                        L = Lstack[Lstack.size()-1];
-                        Lstack.erase(Lstack.end());
+                        L = Lstack.back();
+                        Lstack.pop_back();
 
-                        U = Ustack[Ustack.size()-1];
-                        Ustack.erase(Ustack.end());
+                        U = Ustack.back();
+                        Ustack.pop_back();
+                        continue;
                     }
                 }
                 fig.color = figureColor;
+                applyTransformation(fig, allTrans);
                 figures.push_back(fig);
             }
         }
@@ -546,13 +581,33 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         auto img = Draw2DLines(lijntjes, size, bgcolor);
         return img;
     }
+
+    else if (type == "ZBufferedWireframe"){
+        Figures3D figures;
+        auto nrFigures = configuration["General"]["nrFigures"].as_int_or_die();
+
+        std::vector<double> eye = configuration["General"]["eye"].as_double_tuple_or_die();
+        Vector3D eyepoint = Vector3D::point(eye[0], eye[1], eye[2]);
+        auto V = eyePointTrans(eyepoint);
+
+        for (int i = 0; i < nrFigures; i++) {
+            std::string figure_name = "Figure" + std::to_string(i);
+            auto type2 = configuration[figure_name]["type"].as_string_or_die();
+
+            if (type2 == "LineDrawing"){
+
+            }
+        }
+    }
+
+
     return img::EasyImage();
 }
 
 
 int main(int argc, char const *argv[]) {
     std::ifstream input;
-    input.open("wireframes011.ini");
+    input.open("z_buffered_wireframes001.ini");
     ini::Configuration conf;
     input>>conf;
 

@@ -1,5 +1,6 @@
 #include "ThreeDeeLines.h"
 #include <cmath>
+#include <limits>
 
 void toPolar(const Vector3D &point, double &theta, double &phi, double &r){
     r = sqrt((point.x*point.x)+(point.y*point.y)+(point.z*point.z));
@@ -25,9 +26,6 @@ Matrix eyePointTrans(const Vector3D &eyepoint){
 
 Point2D doProjectionPoint(const Vector3D &point, const double &d){
     auto z = point.z;
-    /**if (point.z == 0){
-        z = 1;
-    }**/
     auto xAccent = d*point.x/-z;
     auto yaccent = d*point.y/-z;
     return Point2D(xAccent, yaccent);
@@ -43,10 +41,16 @@ Lines2D doProjection(const Figures3D &f){
                 if (i == face.point_indexes.size() - 1) {
                     line.p1 = doProjectionPoint(fig.points[face.point_indexes[i]], d);
                     line.p2 = doProjectionPoint(fig.points[face.point_indexes[0]], d);
+
+                    line.z1 = fig.points[face.point_indexes[i]].z;
+                    line.z2 = fig.points[face.point_indexes[0]].z;
                 }
                 else{
                     line.p1 = doProjectionPoint(fig.points[face.point_indexes[i]], d);
                     line.p2 = doProjectionPoint(fig.points[face.point_indexes[i+1]], d);
+
+                    line.z1 = fig.points[face.point_indexes[i]].z;
+                    line.z2 = fig.points[face.point_indexes[i+1]].z;
                 }
                 line.color = fig.color;
                 lines.push_back(line);
@@ -55,6 +59,8 @@ Lines2D doProjection(const Figures3D &f){
     }
     return lines;
 }
+
+
 
 Matrix scaleFigure(const double scale){
     Matrix S;
@@ -103,4 +109,8 @@ void applyTransformation(Figure &f, const Matrix &m){
     for (auto &p: f.points){
         p *= m;
     }
+}
+
+ZBuffer::ZBuffer(const int width, const int height) {
+    std::vector<std::vector<double>>(width, std::vector<double>(height, std::numeric_limits<double>::infinity()));
 }

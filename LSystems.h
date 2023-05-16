@@ -30,6 +30,9 @@ public:
     Point2D p2;
     Color color;
 
+    double z1;
+    double z2;
+
     explicit Line2D() : p1(), p2(), color() {}
     Line2D(Point2D a, Point2D b, Color c) {p1 = a; p2 = b; color = c;};
 
