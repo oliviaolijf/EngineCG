@@ -263,8 +263,8 @@ void img::EasyImage::draw_line(unsigned int x0, unsigned int y0, unsigned int x1
 	}
 }
 
-void img::EasyImage::draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned int y0, const double z0, unsigned int x1,
-                                    unsigned int y1, const double z1, img::Color color) {
+void img::EasyImage::draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned int y0, double z0, unsigned int x1,
+                                    unsigned int y1,  double z1, img::Color color) {
     auto pixelcolor = img::Color(color.red*255, color.green*255, color.blue*255);
     if (x0 >= this->width || y0 >= this->height || x1 >= this->width || y1 > this->height) {
         std::stringstream ss;
@@ -311,32 +311,60 @@ void img::EasyImage::draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned in
             //flip points if x1>x0: we want x0 to have the lowest value
             std::swap(x0, x1);
             std::swap(y0, y1);
+            std::swap(z0,z1);
         }
         double m = ((double) y1 - (double) y0) / ((double) x1 - (double) x0);
         if (-1.0 <= m && m <= 1.0)
         {
+            double xrange = x1-x0;
+            unsigned int it = 0;
             for (unsigned int i = 0; i <= (x1 - x0); i++)
             {
-                double curz;
-                (*this)(x0 + i, (unsigned int) round(y0 + m * i)) = pixelcolor;
+                double curz = buffer[x0+i][(unsigned int) round(y0 + m * i)];
+                double newz = (((xrange-it)/xrange)/z0) + ((1-(-xrange-it)/xrange)/z1);
+                it++;
+
+                if (newz < curz) {
+                    (*this)(x0 + i, (unsigned int) round(y0 + m * i)) = pixelcolor;
+                    buffer[x0+i][(unsigned int) round(y0 + m * i)] = newz;
+                }
             }
         }
         else if (m > 1.0)
         {
-            for (unsigned int i = 0; i <= (y1 - y0); i++)
+            double yrange = y1-y0;
+            unsigned int it = 0;
+            for (unsigned int i = 0; i <= (x1 - x0); i++)
             {
-                (*this)((unsigned int) round(x0 + (i / m)), y0 + i) = pixelcolor;
+                double curz = buffer[x0+i][(unsigned int) round(y0 + m * i)];
+                double newz = (((yrange-it)/yrange)/z0) + ((1-((-yrange-it)/yrange))/z1);
+                it++;
+
+                if (newz < curz) {
+                    (*this)((unsigned int) round(x0 + (i / m)), y0+i) = pixelcolor;
+                    buffer[(unsigned int) round(x0 + (i / m))][y0+i] = newz;
+                }
             }
         }
         else if (m < -1.0)
         {
+            double yrange = y0-y1;
+            unsigned int it = 0;
             for (unsigned int i = 0; i <= (y0 - y1); i++)
             {
-                (*this)((unsigned int) round(x0 - (i / m)), y0 - i) = pixelcolor;
+                double curz = buffer[(unsigned int) round(x0 - (i / m))][y0-i];
+                double newz = (((yrange-it)/yrange)/z0) + ((1-((-yrange-it)/yrange))/z1);
+                it++;
+
+                if (newz < curz) {
+                    (*this)((unsigned int) round(x0 - (i / m)), y0 - i) = pixelcolor;
+                    buffer[(unsigned int) round(x0 - (i / m))][y0-1] = newz;
+                }
             }
         }
     }
 }
+
 std::ostream& img::operator<<(std::ostream& out, EasyImage const& image)
 {
 

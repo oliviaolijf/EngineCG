@@ -221,8 +221,8 @@ namespace img
 			 */
 			void draw_line(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, Color color);
 
-            void draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned int y0, const double z0, unsigned int x1, unsigned int y1, const double z1, Color color);
-
+            void draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned int y0, const double z0, unsigned int x1,
+                                unsigned int y1, const double z1, img::Color color);
 
     private:
 			friend std::istream& operator>>(std::istream& in, EasyImage & image);

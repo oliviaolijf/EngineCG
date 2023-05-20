@@ -36,7 +36,6 @@ public:
     explicit Line2D() : p1(), p2(), color() {}
     Line2D(Point2D a, Point2D b, Color c) {p1 = a; p2 = b; color = c;};
 
-    std::list<Point2D> get_coordinates();
 
 };
 

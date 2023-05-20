@@ -16,7 +16,7 @@
 
 #define M_PI 3.14159265358979
 
-img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, bool zbuffer) {
+img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc) {
     img::Color backgroundcolor(bgc.red*255, bgc.green*255, bgc.blue*255);
 
     double xmax = 0, xmin = size, ymax = 0, ymin = size;
@@ -40,7 +40,7 @@ img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, bool zbuff
     auto dcx = (imagex/2)-DCx;
     auto dcy = (imagey/2)-DCy;
     img::EasyImage image(imagex, imagey, backgroundcolor);
-
+    bool zbuffer = false;
     if (!zbuffer) {
         for (auto &l: lines) {
             l.p1.x = (l.p1.x * d) + dcx;
@@ -474,6 +474,11 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 Vector3D L = Vector3D::point(0, 1, 0);
                 Vector3D U = Vector3D::point(0, 0, 1);
 
+                Vector3D keepH;
+                Vector3D keepL;
+                Vector3D keepU;
+                Vector3D keepp;
+
                 fig.points.push_back(curp);
 
                 int counter = 0;
@@ -499,6 +504,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 for (auto &c: initiator) {
                     if (alfabet.count(c)) {
                         if (lsystem.draw(c)) {
+                            fig.points.push_back(curp);
                             curp += H;
                             pointcounter++;
                             Face face({pointcounter, pointcounter-1});
@@ -510,37 +516,37 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         continue;
                     }
                     if (c == '+') {
-                        auto temp = H;
+                        Vector3D temp = H;
                         H = (H*cos(angle)) + (L*sin(angle));
                         L = -(temp*sin(angle)) + (L*cos(angle));
                         continue;
                     }
                     if (c == '-') {
-                        auto temp = H;
+                        Vector3D temp = H;
                         H = (H*cos(-angle)) + (L* sin(-angle));
                         L = -(temp*sin(-angle)) + (L*cos(-angle));
                         continue;
                     }
                    if (c == '^'){
-                        auto temp = H;
+                        Vector3D temp = H;
                         H = (H*cos(angle)) + (U* sin(angle));
                         U = -(temp*sin(angle)) + (U*cos(angle));
                        continue;
                     }
                     if (c == '&') {
-                        auto temp = H;
+                        Vector3D temp = H;
                         H = (H* cos(-angle)) + (U* sin(-angle));
                         U = -(temp* sin(-angle)) + (U*cos(-angle));
                         continue;
                     }
                     if (c == '\\'){
-                        auto temp = L;
+                        Vector3D temp = L;
                         L = (L* cos(angle)) - (U*sin(angle));
                         U = (temp*sin(angle)) + (U* cos(angle));
                         continue;
                     }
                     if (c == '/'){
-                        auto temp = L;
+                        Vector3D temp = L;
                         L = (L*cos(-angle)) - (U* sin(-angle));
                         U = (temp*sin(-angle)) + (U*cos(-angle));
                         continue;
@@ -551,14 +557,22 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         continue;
                     }
                     if (c == '('){
-                        pointstack.push_back(curp);
+                        keepp =curp;
+                        keepH = H;
+                        keepL = L;
+                        keepU = U;
+                        /**pointstack.push_back(curp);
                         Hstack.push_back(H);
                         Lstack.push_back(L);
-                        Ustack.push_back(U);
+                        Ustack.push_back(U);**/
                         continue;
                     }
                     if (c == ')'){
-                        curp = pointstack.back();
+                        H = keepH;
+                        L = keepL;
+                        U = keepU;
+                        curp = keepp;
+                        /**curp = pointstack.back();
                         pointstack.pop_back();
 
                         H =  Hstack.back();
@@ -568,7 +582,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         Lstack.pop_back();
 
                         U = Ustack.back();
-                        Ustack.pop_back();
+                        Ustack.pop_back();**/
                         continue;
                     }
                 }
@@ -607,7 +621,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 int main(int argc, char const *argv[]) {
     std::ifstream input;
-    input.open("z_buffered_wireframes001.ini");
+    input.open("wireframes011.ini");
     ini::Configuration conf;
     input>>conf;
 
