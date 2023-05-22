@@ -21,6 +21,7 @@
 #include <vector>
 #include <iostream>
 #include "ThreeDeeLines.h"
+#include "Zbuffer.h"
 /**
  * \brief The namespace of the EasyImage class
  */

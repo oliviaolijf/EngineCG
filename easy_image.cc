@@ -265,42 +265,54 @@ void img::EasyImage::draw_line(unsigned int x0, unsigned int y0, unsigned int x1
 
 void img::EasyImage::draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned int y0, double z0, unsigned int x1,
                                     unsigned int y1,  double z1, img::Color color) {
-    auto pixelcolor = img::Color(color.red*255, color.green*255, color.blue*255);
+    auto finalColor = color;
     if (x0 >= this->width || y0 >= this->height || x1 >= this->width || y1 > this->height) {
         std::stringstream ss;
         ss << "Drawing line from (" << x0 << "," << y0 << ") to (" << x1 << "," << y1 << ") in image of width "
            << this->width << " and height " << this->height;
         throw std::runtime_error(ss.str());
     }
-    if (x0 == x1)
+    else if (x0 == x1)
     {
+        if (y0 > y1) {
+            std::swap(x0, x1);
+            std::swap(y0, y1);
+            std::swap(z0, z1);
+        }
         //special case for x0 == x1
-        double a = y1 - y0;
-        unsigned int b = 0;
+        double a = std::max(y0, y1) - std::min(y0, y1);
+        unsigned int k = 0;
         for (unsigned int i = std::min(y0, y1); i <= std::max(y0, y1); i++)
         {
-            double curz = buffer[x0][i];
-            double newz = (((a-b)/a)/z0) + ((1-(-a-b)/a)/z1);
-            b++;
-            if (newz < curz){
-                (*this)(x0,i) = pixelcolor;
-                buffer[x0][i]= newz;
+            double cur_z_value = buffer[x0][i];
+            double new_z_value = (((a-k)/a)/z0) + ((1-((a-k)/a))/z1);
+            k++;
+
+            if (new_z_value < cur_z_value) {
+                (*this)(x0, i) = finalColor;
+                buffer[x0][i] = new_z_value;
             }
         }
     }
     else if (y0 == y1)
     {
+        if (x0 > x1) {
+            std::swap(x0, x1);
+            std::swap(y0, y1);
+            std::swap(z0, z1);
+        }
         //special case for y0 == y1
-        double a = std::max(x0,x1) - std::min(x0,x1);
-        unsigned int b = 0;
+        double a = std::max(x0, x1) - std::min(x0, x1);
+        unsigned int k = 0;
         for (unsigned int i = std::min(x0, x1); i <= std::max(x0, x1); i++)
         {
-            double curz = buffer[i][y0];
-            double newz = (((a-b)/a)/z0) + ((1-(-a-b)/a)/z1);
-            b++;
-            if (newz < curz){
-                (*this)(i,y0) = pixelcolor;
-                buffer[i][y0]= newz;
+            double cur_z_value = buffer[i][y0];
+            double new_z_value = (((a-k)/a)/z0) + ((1-((a-k)/a))/z1);
+            k++;
+
+            if (new_z_value < cur_z_value) {
+                (*this)(i, y0) = finalColor;
+                buffer[i][y0] = new_z_value;
             }
         }
     }
@@ -311,54 +323,54 @@ void img::EasyImage::draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned in
             //flip points if x1>x0: we want x0 to have the lowest value
             std::swap(x0, x1);
             std::swap(y0, y1);
-            std::swap(z0,z1);
+            std::swap(z0, z1);
         }
         double m = ((double) y1 - (double) y0) / ((double) x1 - (double) x0);
         if (-1.0 <= m && m <= 1.0)
         {
-            double xrange = x1-x0;
-            unsigned int it = 0;
+            double a = x1-x0;
+            unsigned int k = 0;
             for (unsigned int i = 0; i <= (x1 - x0); i++)
             {
-                double curz = buffer[x0+i][(unsigned int) round(y0 + m * i)];
-                double newz = (((xrange-it)/xrange)/z0) + ((1-(-xrange-it)/xrange)/z1);
-                it++;
+                double cur_z_value = buffer[x0+i][(unsigned int) round(y0 + m * i)];
+                double new_z_value = (((a-k)/a)/z0) + ((1-((a-k)/a))/z1);
+                k++;
 
-                if (newz < curz) {
-                    (*this)(x0 + i, (unsigned int) round(y0 + m * i)) = pixelcolor;
-                    buffer[x0+i][(unsigned int) round(y0 + m * i)] = newz;
+                if (new_z_value < cur_z_value) {
+                    (*this)(x0 + i, (unsigned int) round(y0 + m * i)) = finalColor;
+                    buffer[x0+i][(unsigned int) round(y0 + m * i)] = new_z_value;
                 }
             }
         }
         else if (m > 1.0)
         {
-            double yrange = y1-y0;
-            unsigned int it = 0;
-            for (unsigned int i = 0; i <= (x1 - x0); i++)
+            double a = y1-y0;
+            unsigned int k = 0;
+            for (unsigned int i = 0; i <= (y1 - y0); i++)
             {
-                double curz = buffer[x0+i][(unsigned int) round(y0 + m * i)];
-                double newz = (((yrange-it)/yrange)/z0) + ((1-((-yrange-it)/yrange))/z1);
-                it++;
+                double cur_z_value = buffer[(unsigned int) round(x0 + (i / m))][y0 + i];
+                double new_z_value = (((a-k)/a)/z0) + ((1-((a-k)/a))/z1);
+                k++;
 
-                if (newz < curz) {
-                    (*this)((unsigned int) round(x0 + (i / m)), y0+i) = pixelcolor;
-                    buffer[(unsigned int) round(x0 + (i / m))][y0+i] = newz;
+                if (new_z_value < cur_z_value) {
+                    (*this)((unsigned int) round(x0 + (i / m)), y0 + i) = finalColor;
+                    buffer[(unsigned int) round(x0 + (i / m))][y0 + i] = new_z_value;
                 }
             }
         }
         else if (m < -1.0)
         {
-            double yrange = y0-y1;
-            unsigned int it = 0;
+            double a = y0-y1;
+            unsigned int k = 0;
             for (unsigned int i = 0; i <= (y0 - y1); i++)
             {
-                double curz = buffer[(unsigned int) round(x0 - (i / m))][y0-i];
-                double newz = (((yrange-it)/yrange)/z0) + ((1-((-yrange-it)/yrange))/z1);
-                it++;
+                double cur_z_value = buffer[(unsigned int) round(x0 - (i / m))][y0 - i];
+                double new_z_value = (((a-k)/a)/z0) + ((1-((a-k)/a))/z1);
+                k++;
 
-                if (newz < curz) {
-                    (*this)((unsigned int) round(x0 - (i / m)), y0 - i) = pixelcolor;
-                    buffer[(unsigned int) round(x0 - (i / m))][y0-1] = newz;
+                if (new_z_value < cur_z_value) {
+                    (*this)((unsigned int) round(x0 - (i / m)), y0 - i) = finalColor;
+                    buffer[(unsigned int) round(x0 - (i / m))][y0 - i] = new_z_value;
                 }
             }
         }

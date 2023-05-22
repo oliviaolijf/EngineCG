@@ -21,12 +21,6 @@ public:
 };
 typedef std::list<Figure> Figures3D;
 
-class ZBuffer: public std::vector<std::vector<double>>
-        {
-public:
-   ZBuffer(const int width, const int height);
-};
-
 void toPolar(const Vector3D &point, double &theta, double &phi, double &r);
 
 Matrix eyePointTrans(const Vector3D &eyepoint);

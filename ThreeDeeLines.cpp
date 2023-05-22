@@ -111,6 +111,4 @@ void applyTransformation(Figure &f, const Matrix &m){
     }
 }
 
-ZBuffer::ZBuffer(const int width, const int height) {
-    std::vector<std::vector<double>>(width, std::vector<double>(height, std::numeric_limits<double>::infinity()));
-}
+
