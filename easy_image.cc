@@ -263,7 +263,7 @@ void img::EasyImage::draw_line(unsigned int x0, unsigned int y0, unsigned int x1
 	}
 }
 
-void img::EasyImage::draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned int y0, double z0, unsigned int x1,
+void img::EasyImage::draw_zbuf_line(ZBuffer& buffer, unsigned int x0, unsigned int y0, double z0, unsigned int x1,
                                     unsigned int y1,  double z1, img::Color color) {
     auto finalColor = color;
     if (x0 >= this->width || y0 >= this->height || x1 >= this->width || y1 > this->height) {
@@ -342,19 +342,16 @@ void img::EasyImage::draw_zbuf_line(ZBuffer buffer, unsigned int x0, unsigned in
                 }
             }
         }
-        else if (m > 1.0)
-        {
-            double a = y1-y0;
+        else if (m > 1.0) {
+            double a = y1 - y0;
             unsigned int k = 0;
-            for (unsigned int i = 0; i <= (y1 - y0); i++)
-            {
+            for (unsigned int i = 0; i <= (y1 - y0); i++) {
                 double cur_z_value = buffer[(unsigned int) round(x0 + (i / m))][y0 + i];
-                double new_z_value = (((a-k)/a)/z0) + ((1-((a-k)/a))/z1);
+                double new_z_value = (((a - k) / a) / z0) + ((1 - ((a - k) / a)) / z1);
                 k++;
-
                 if (new_z_value < cur_z_value) {
-                    (*this)((unsigned int) round(x0 + (i / m)), y0 + i) = finalColor;
                     buffer[(unsigned int) round(x0 + (i / m))][y0 + i] = new_z_value;
+                    (*this)((unsigned int) round(x0 + (i / m)), y0 + i) = finalColor;
                 }
             }
         }
