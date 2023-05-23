@@ -32,7 +32,6 @@ Point2D doProjectionPoint(const Vector3D &point, const double &d){
 };
 
 Lines2D doProjection(const Figures3D &f){
-    std::cout << f.size() << std::endl;
     double d = 1;
     Lines2D lines;
     for(auto& fig :f){

@@ -18,7 +18,6 @@
 #define M_PI 3.14159265358979
 
 img::EasyImage Draw2DLines(Lines2D &lines, const int size, Color bgc, bool zbuffer) {
-    std::cout << lines.size() << std::endl;
     img::Color backgroundcolor(bgc.red*255, bgc.green*255, bgc.blue*255);
 
     double xmax = 0, xmin = size, ymax = 0, ymin = size;
