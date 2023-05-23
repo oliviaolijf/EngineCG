@@ -1028,7 +1028,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 int main(int argc, char const *argv[]) {
     std::ifstream input;
-    input.open("z_buffering030.ini");
+    input.open("z_buffering069.ini");
     ini::Configuration conf;
     input>>conf;
 

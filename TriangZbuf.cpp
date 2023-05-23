@@ -39,17 +39,16 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
     auto xc = ((d*C.x)/-C.z) + dx;
     auto yc = ((d*C.y)/-C.z) + dy;
 
-    double tempymin = std::lround(std::min(ya, yb));
+    double tempymin = std::min(ya, yb);
     int ymin = std::lround(std::min(tempymin, yc)+0.5);
-    double tempymax = std::lround(std::max(ya, yb));
+    double tempymax = std::max(ya, yb);
     int ymax = std::lround(std::max(tempymax, yc)-0.5);
-    double tempxmin = std::lround(std::min(xa, xb));
+    double tempxmin = std::min(xa, xb);
     int xmin = std::lround(std::min(tempxmin, xc));
-    double tempxmax = std::lround(std::max(xa, xb));
+    double tempxmax = std::max(xa, xb);
     int xmax = std::lround(std::max(tempxmax, xc));
 
-    int what = ymax-ymin;
-    for (auto yi = ymin; yi < ymax; yi++){
+    for (auto yi = ymin; yi <= ymax; yi++){
         double xlAB = std::numeric_limits<double>::infinity();
         double xlAC = std::numeric_limits<double>::infinity();
         double xlBC = std::numeric_limits<double>::infinity();
@@ -83,14 +82,32 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
             xlBC = xi;
             xrBC = xi;
         }
-        double templ = round(std::min(xlAB, xlAC));
+        double templ = std::min(xlAB, xlAC);
         int xl = std::lround(std::min(templ, xlBC) + 0.5);
-
-        double tempr = round(std::max(xrAB, xrAC));
+        double tempr = std::max(xrAB, xrAC);
         int xr = std::lround(std::max(tempr, xrBC) - 0.5);
 
+        auto xg = (xa+xb+xc)/3;
+        auto yg = (ya+yb+yc)/3;
+        double smallzg = 1/(3*A.z) + 1/(3*B.z) + 1/(3*C.z);
+
+        Vector3D u = Vector3D::vector(B.x-A.x, B.y-A.y, B.z-A.z);
+        Vector3D v = Vector3D::vector(C.x-A.x, C.y-A.y, C.z-A.z);
+        double w1 = (u.y*v.z) - (u.z*v.y);
+        double w2 = (u.z*v.x) - (u.x-v.z);
+        double w3 = (u.x*v.y) - (u.y*v.x);
+        double k = w1*A.x + w2*A.y + w3*A.z;
+
+        double dzdx = w1/(-d*k);
+        double dzdy = w2/(-d*k);
+
         for (int ix = xl; ix <= xr; ix++ ){
-            img(ix, yi) = pixelcolor;
+            auto curz = buffer[ix][yi];
+            auto newz = 1.0001*smallzg + (ix-xg)*(dzdx) + (yi-yg)*(dzdy);
+            if (newz < curz) {
+                img(ix, yi) = pixelcolor;
+                buffer[ix][yi] = newz;
+            }
         }
     }
 }
