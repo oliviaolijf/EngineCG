@@ -1,20 +1,24 @@
 #include "ThreeDeeLines.h"
 #include "Zbuffer.h"
-#include "LSystems.h"
-#include "3DFigures.cpp"
 #include "ini_configuration.h"
+#include "3DFigures.cpp"
 #include "l_parser/l_parser.h"
 #include <fstream>
 #include <limits>
+
+#define M_PI 3.14159265358979
 
 std::vector<Face> triangulate(const Face& face){
     auto n = face.point_indexes.size();
     std::vector<Face> triangles;
 
-    for (int i = 2; i < n-2; i++){
-        Face f = {{face.point_indexes[0], face.point_indexes[i], face.point_indexes[i+1]}};
-        triangles.push_back(f);
+    if (face.point_indexes.size() > 3) {
+        for (int i = 1; i < n - 1; i++) {
+            Face f = {{face.point_indexes[0], face.point_indexes[i], face.point_indexes[i + 1]}};
+            triangles.push_back(f);
+        }
     }
+    else triangles.push_back(face);
     return triangles;
 }
 
@@ -26,32 +30,32 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
                      Color color){
     img::Color pixelcolor(color.red*255, color.green*255, color.blue*255);
     Point2D aAccent, bAccent, cAccent;
-    auto xa = (d*A.x/-A.z) + dx;
-    auto ya = (d*A.y/-A.z) + dy;
+    auto xa = ((d*A.x)/-A.z) + dx;
+    auto ya = ((d*A.y)/-A.z) + dy;
 
-    auto xb = (d*B.x/-B.z) + dx;
-    auto yb = (d*B.y/-B.z) + dy;
+    auto xb = ((d*B.x)/-B.z) + dx;
+    auto yb = ((d*B.y)/-B.z) + dy;
 
-    auto xc = (d*C.x/-C.z) + dx;
-    auto yc = (d*C.y/-C.z) + dy;
+    auto xc = ((d*C.x)/-C.z) + dx;
+    auto yc = ((d*C.y)/-C.z) + dy;
 
-    int ymin = std::min(ya, yb);
-    if (yc < ymin) ymin = yc;
-    int ymax = std::max(ya, yb);
-    if (yc > ymax) ymax = yc;
-    int xmin = std::min(xa, xb);
-    if (xc < xmin) xmin = xc;
-    int xmax = std::max(xa, xb);
-    if (xc > xmax) xmax = xc;
+    double tempymin = std::lround(std::min(ya, yb));
+    int ymin = std::lround(std::min(tempymin, yc)+0.5);
+    double tempymax = std::lround(std::max(ya, yb));
+    int ymax = std::lround(std::max(tempymax, yc)-0.5);
+    double tempxmin = std::lround(std::min(xa, xb));
+    int xmin = std::lround(std::min(tempxmin, xc));
+    double tempxmax = std::lround(std::max(xa, xb));
+    int xmax = std::lround(std::max(tempxmax, xc));
 
-    for (auto i = 0; i <= (ymax-ymin); i++){
+    int what = ymax-ymin;
+    for (auto yi = ymin; yi < ymax; yi++){
         double xlAB = std::numeric_limits<double>::infinity();
         double xlAC = std::numeric_limits<double>::infinity();
         double xlBC = std::numeric_limits<double>::infinity();
         double xrAB = -std::numeric_limits<double>::infinity();
         double xrAC = -std::numeric_limits<double>::infinity();
         double xrBC = -std::numeric_limits<double>::infinity();
-        int yi = ymin+i;
 
         double xp = xa;
         double xq = xb;
@@ -80,10 +84,10 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
             xrBC = xi;
         }
         double templ = round(std::min(xlAB, xlAC));
-        int xl = round(std::min(templ, xlBC) + 0.5);
+        int xl = std::lround(std::min(templ, xlBC) + 0.5);
 
-        double tempr = round(std::min(xrAB, xrAC));
-        int xr = round(std::min(tempr, xrBC) - 0.5);
+        double tempr = round(std::max(xrAB, xrAC));
+        int xr = std::lround(std::max(tempr, xrBC) - 0.5);
 
         for (int ix = xl; ix <= xr; ix++ ){
             img(ix, yi) = pixelcolor;
@@ -98,7 +102,7 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
     auto size = configuration["General"]["size"].as_int_or_die();
 
     auto backgroundcolor = configuration["General"]["backgroundcolor"].as_double_tuple_or_die();
-    Color bgcolor(backgroundcolor[0], backgroundcolor[1], backgroundcolor[2]);
+    img::Color bgcolor(backgroundcolor[0]*255, backgroundcolor[1]*255, backgroundcolor[2]*255);
 
     std::vector<double> eye = configuration["General"]["eye"].as_double_tuple_or_die();
     Vector3D eyepoint = Vector3D::point(eye[0], eye[1], eye[2]);
@@ -523,16 +527,15 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             figures.push_back(fig);
         }
     }
-
-    for (auto fig: figures){
+    for (auto& fig: figures){
         Figure temp;
         for (auto &face: fig.faces){
             auto huh = triangulate(face);
             for (auto h: huh)  temp.faces.push_back(h);
         }
-        triFigures.push_back(temp);
+        fig.faces = temp.faces;
     }
-    auto lijntjes = doProjection(triFigures);
+    auto lijntjes = doProjection(figures);
 
     double xmax = 0, xmin = size, ymax = 0, ymin = size;
     for (auto &l: lijntjes){
@@ -555,5 +558,20 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
     auto dcx = (imagex/2)-DCx;
     auto dcy = (imagey/2)-DCy;
 
+    img::EasyImage image(std::lround(imagex), std::lround(imagey), bgcolor);
 
+    ZBuffer buffer(image.get_width(), image.get_height());
+    for (auto& fig: figures){
+        int bloep = 0;
+        for (auto& fa: fig.faces){
+                std::cout << std::to_string(bloep) << std::endl;
+                Vector3D a = fig.points[fa.point_indexes[0]];
+                Vector3D b = fig.points[fa.point_indexes[1]];
+                Vector3D c = fig.points[fa.point_indexes[2]];
+
+                draw_zbuf_triag(buffer, image, a, b, c, d, dcx, dcy, fig.color);
+                bloep++;
+        }
+    }
+    return image;
 }

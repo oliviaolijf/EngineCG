@@ -4,13 +4,10 @@
 
 #include "easy_image.h"
 #include "ini_configuration.h"
-#include "LSystems.h"
 #include "l_parser/l_parser.h"
 #include "vector/vector3d.h"
-#include "LSystems.cpp"
 #include "ThreeDeeLines.h"
-#include "Zbuffer.h"
-#include "3DFigures.cpp"
+#include "TriangZbuf.cpp"
 
 #include <string>
 #include <list>
@@ -563,22 +560,14 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         continue;
                     }
                     if (c == '('){
-                        keepp =curp;
-                        keepH = H;
-                        keepL = L;
-                        keepU = U;
-                        /**pointstack.push_back(curp);
+                        pointstack.push_back(curp);
                         Hstack.push_back(H);
                         Lstack.push_back(L);
-                        Ustack.push_back(U);**/
+                        Ustack.push_back(U);
                         continue;
                     }
                     if (c == ')'){
-                        H = keepH;
-                        L = keepL;
-                        U = keepU;
-                        curp = keepp;
-                        /**curp = pointstack.back();
+                        curp = pointstack.back();
                         pointstack.pop_back();
 
                         H =  Hstack.back();
@@ -588,7 +577,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         Lstack.pop_back();
 
                         U = Ustack.back();
-                        Ustack.pop_back();**/
+                        Ustack.pop_back();
                         continue;
                     }
                 }
@@ -996,22 +985,14 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         continue;
                     }
                     if (c == '('){
-                        keepp =curp;
-                        keepH = H;
-                        keepL = L;
-                        keepU = U;
-                        /**pointstack.push_back(curp);
+                        pointstack.push_back(curp);
                         Hstack.push_back(H);
                         Lstack.push_back(L);
-                        Ustack.push_back(U);**/
+                        Ustack.push_back(U);
                         continue;
                     }
                     if (c == ')'){
-                        H = keepH;
-                        L = keepL;
-                        U = keepU;
-                        curp = keepp;
-                        /**curp = pointstack.back();
+                        curp = pointstack.back();
                         pointstack.pop_back();
 
                         H =  Hstack.back();
@@ -1021,7 +1002,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         Lstack.pop_back();
 
                         U = Ustack.back();
-                        Ustack.pop_back();**/
+                        Ustack.pop_back();
                         continue;
                     }
                 }
@@ -1035,6 +1016,11 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
         return img;
     }
 
+    else if (type == "ZBuffering"){
+        std::cout << "heyhoi" << std::endl;
+        auto img = triangZbuf(configuration);
+        return img;
+    }
 
     return img::EasyImage();
 }
@@ -1042,7 +1028,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
 
 int main(int argc, char const *argv[]) {
     std::ifstream input;
-    input.open("z_buffered_wireframes114.ini");
+    input.open("z_buffering030.ini");
     ini::Configuration conf;
     input>>conf;
 
