@@ -1017,7 +1017,6 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
     }
 
     else if (type == "ZBuffering"){
-        std::cout << "heyhoi" << std::endl;
         auto img = triangZbuf(configuration);
         return img;
     }
@@ -1030,10 +1029,10 @@ int main(int argc, char const *argv[]) {
     std::ifstream input;
     input.open("z_buffering069.ini");
     ini::Configuration conf;
-    input>>conf;
+    input >> conf;
 
     std::ofstream out;
-    out.open("test1.bmp");
+    out.open("test01.bmp");
     auto img = generate_image(conf);
     out << img;
     return 0;

@@ -29,13 +29,11 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
                      double d, double dx, double dy,
                      Color color){
     img::Color pixelcolor(color.red*255, color.green*255, color.blue*255);
-    Point2D aAccent, bAccent, cAccent;
+    img::Color white(255,255,255);
     auto xa = ((d*A.x)/-A.z) + dx;
     auto ya = ((d*A.y)/-A.z) + dy;
-
     auto xb = ((d*B.x)/-B.z) + dx;
     auto yb = ((d*B.y)/-B.z) + dy;
-
     auto xc = ((d*C.x)/-C.z) + dx;
     auto yc = ((d*C.y)/-C.z) + dy;
 
@@ -43,10 +41,6 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
     int ymin = std::lround(std::min(tempymin, yc)+0.5);
     double tempymax = std::max(ya, yb);
     int ymax = std::lround(std::max(tempymax, yc)-0.5);
-    double tempxmin = std::min(xa, xb);
-    int xmin = std::lround(std::min(tempxmin, xc));
-    double tempxmax = std::max(xa, xb);
-    int xmax = std::lround(std::max(tempxmax, xc));
 
     for (auto yi = ymin; yi <= ymax; yi++){
         double xlAB = std::numeric_limits<double>::infinity();
@@ -91,10 +85,10 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
         auto yg = (ya+yb+yc)/3;
         double smallzg = 1/(3*A.z) + 1/(3*B.z) + 1/(3*C.z);
 
-        Vector3D u = Vector3D::vector(B.x-A.x, B.y-A.y, B.z-A.z);
-        Vector3D v = Vector3D::vector(C.x-A.x, C.y-A.y, C.z-A.z);
+        Vector3D u = B-A;
+        Vector3D v = C-A;
         double w1 = (u.y*v.z) - (u.z*v.y);
-        double w2 = (u.z*v.x) - (u.x-v.z);
+        double w2 = (u.z*v.x) - (u.x*v.z);
         double w3 = (u.x*v.y) - (u.y*v.x);
         double k = w1*A.x + w2*A.y + w3*A.z;
 
@@ -103,7 +97,7 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
 
         for (int ix = xl; ix <= xr; ix++ ){
             auto curz = buffer[ix][yi];
-            auto newz = 1.0001*smallzg + (ix-xg)*(dzdx) + (yi-yg)*(dzdy);
+            auto newz = 1.0001 * smallzg + (ix-xg)*dzdx + (yi-yg)*dzdy;
             if (newz < curz) {
                 img(ix, yi) = pixelcolor;
                 buffer[ix][yi] = newz;
@@ -552,7 +546,8 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
         }
         fig.faces = temp.faces;
     }
-    auto lijntjes = doProjection(figures);
+    auto copyfigures = figures;
+    auto lijntjes = doProjection(copyfigures);
 
     double xmax = 0, xmin = size, ymax = 0, ymin = size;
     for (auto &l: lijntjes){
@@ -570,8 +565,8 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
 
     auto d = 0.95*(imagex/xrange);
 
-    auto DCx = (d*(xmin+xmax))/2;
-    auto DCy = (d*(ymin+ymax))/2;
+    auto DCx = d*((xmin+xmax)/2);
+    auto DCy = d*((ymin+ymax)/2);
     auto dcx = (imagex/2)-DCx;
     auto dcy = (imagey/2)-DCy;
 
@@ -579,15 +574,12 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
 
     ZBuffer buffer(image.get_width(), image.get_height());
     for (auto& fig: figures){
-        int bloep = 0;
         for (auto& fa: fig.faces){
-                std::cout << std::to_string(bloep) << std::endl;
                 Vector3D a = fig.points[fa.point_indexes[0]];
                 Vector3D b = fig.points[fa.point_indexes[1]];
                 Vector3D c = fig.points[fa.point_indexes[2]];
 
                 draw_zbuf_triag(buffer, image, a, b, c, d, dcx, dcy, fig.color);
-                bloep++;
         }
     }
     return image;
