@@ -413,3 +413,33 @@ void generateThickFigure(const Figure& fig, Figures3D &result, const double r, c
         }
     }
 }
+
+void generateFractal(Figure& fig, Figures3D& fractal, const int nrit, const double scale){
+    Figures3D toconvert;
+    toconvert.push_back(fig);
+    Figures3D newfigs;
+    if (nrit != 0) {
+        for (unsigned int it = 0; it < nrit; it++) {
+            newfigs.clear();
+            for (auto &f: toconvert) {
+                for (unsigned int i = 0; i < f.points.size(); i++) {
+                    auto curpoint = f.points[i];
+
+                    auto newfig = f;
+                    auto S = scaleFigure(1 / scale);
+                    applyTransformation(newfig, S);
+
+                    auto T = translate(curpoint - newfig.points[i]);
+                    applyTransformation(newfig, T);
+
+                    newfigs.push_back(newfig);
+                }
+            }
+            toconvert = newfigs;
+        }
+        fractal = newfigs;
+    }
+    else{
+        fractal.push_back(fig);
+    }
+}
