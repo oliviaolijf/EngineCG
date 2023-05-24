@@ -246,7 +246,7 @@ Figure generateSphere(Color c, const int n){
     Figure sphere;
 
     for (int i = 0; i < n; i++) {
-        for (auto face: ico.faces) {
+        for (auto &face: ico.faces) {
             Vector3D A = ico.points[face.point_indexes[0]];
             Vector3D B = ico.points[face.point_indexes[1]];
             Vector3D C = ico.points[face.point_indexes[2]];
@@ -369,4 +369,47 @@ Figure generateTorus(Color c, double r, double R, int n, int m){
 
     torus.color = c;
     return torus;
+}
+
+void generateThickFigure(const Figure& fig, Figures3D &result, const double r, const int n, const int m){
+    for (auto &face: fig.faces) {
+        for (auto &i: face.point_indexes) {
+            auto sphere = generateSphere(fig.color, m);
+            Vector3D p = Vector3D::vector(fig.points[i].x, fig.points[i].y, fig.points[i].z);
+            auto S = scaleFigure(r);
+            auto T = translate(p);
+            auto ST = S * T;
+            applyTransformation(sphere, ST);
+            result.push_back(sphere);
+        }
+        for (int i = 0; i < face.point_indexes.size(); i++){
+            Vector3D p1;
+            Vector3D p2;
+            if (i == face.point_indexes.size() - 1){
+                p1 = fig.points[face.point_indexes[i]];
+                p2 = fig.points[face.point_indexes[0]];
+            }
+            else {
+                p1 = fig.points[face.point_indexes[i]];
+                p2 = fig.points[face.point_indexes[i+1]];
+            }
+            Vector3D vec(p2-p1);
+            double l = vec.length();
+            double h = l/r;
+            auto cylinder = generateCylinder(fig.color, n, h);
+
+            auto S = scaleFigure(r);
+            auto Pr = Vector3D::point(0,0,0) + vec;
+            double phi, theta, rr;
+            toPolar(Pr, theta, phi, rr);
+
+            auto P = rotateY(phi);
+            auto T = rotateZ(theta);
+            auto TRA = translate(p1);
+            auto alltrans = S*P*T*TRA;
+
+            applyTransformation(cylinder, alltrans);
+            result.push_back(cylinder);
+        }
+    }
 }
