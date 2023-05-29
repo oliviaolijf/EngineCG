@@ -27,9 +27,17 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
                      Vector3D const& B,
                      Vector3D const& C,
                      double d, double dx, double dy,
-                     Color color){
-    img::Color pixelcolor(color.red*255, color.green*255, color.blue*255);
-    img::Color white(255,255,255);
+                     Color ambientReflection,
+                     Color diffuseReflection,
+                     Color specularReflection,
+                     Light light, double reflectionCoeff)
+                     {
+    Color am (light.ambientLight.red * ambientReflection.red,
+                light.ambientLight.green * ambientReflection.green,
+                light.ambientLight.blue * ambientReflection.blue
+            );
+    img::Color pixelcolor (am.red*255, am.green*255, am.blue*255);
+
     auto xa = ((d*A.x)/-A.z) + dx;
     auto ya = ((d*A.y)/-A.z) + dy;
     auto xb = ((d*B.x)/-B.z) + dx;
@@ -109,6 +117,7 @@ void draw_zbuf_triag(ZBuffer& buffer, img::EasyImage& img,
 img::EasyImage triangZbuf(const ini::Configuration& configuration){
     Figures3D figures;
     Figures3D triFigures;
+    auto type = configuration["General"]["type"].as_string_or_die();
     auto nrFigures = configuration["General"]["nrFigures"].as_int_or_die();
     auto size = configuration["General"]["size"].as_int_or_die();
 
@@ -118,6 +127,48 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
     std::vector<double> eye = configuration["General"]["eye"].as_double_tuple_or_die();
     Vector3D eyepoint = Vector3D::point(eye[0], eye[1], eye[2]);
     auto V = eyePointTrans(eyepoint);
+    Color white(1,1,1);
+    Light finalLight;
+
+    if (type == "LightedZBuffering"){
+        auto nrl = configuration["General"]["nrLights"].as_int_or_die();
+        Lights3D lights;
+
+        ini::DoubleTuple defa = {0, 0, 0};
+        for (int i = 0; i < nrl; i++){
+            Light light;
+            std::string lightname = "Light"+ std::to_string(i);
+
+            auto al = configuration[lightname]["ambientLight"].as_double_tuple_or_default(defa);
+            Color ambient(al[0], al[1], al[2]);
+            light.ambientLight = ambient;
+
+            auto dl = configuration[lightname]["diffuseLight"].as_double_tuple_if_exists(defa);
+            Color diffuse(al[0], al[1], al[2]);
+            light.diffuseLight = diffuse;
+
+            auto sl = configuration[lightname]["specularLight"].as_double_tuple_if_exists(defa);
+            Color specular(al[0], al[1], al[2]);
+            light.specularLight = specular;
+
+            lights.push_back(light);
+        }
+
+        for (auto l: lights){
+            finalLight.ambientLight.red += l.ambientLight.red;
+            finalLight.ambientLight.green += l.ambientLight.green;
+            finalLight.ambientLight.blue += l.ambientLight.blue;
+
+            finalLight.diffuseLight.red += l.diffuseLight.red;
+            finalLight.diffuseLight.green += l.diffuseLight.green;
+            finalLight.diffuseLight.blue += l.diffuseLight.blue;
+
+            finalLight.specularLight.red += l.specularLight.red;
+            finalLight.specularLight.green += l.specularLight.green;
+            finalLight.specularLight.blue += l.specularLight.blue;
+        }
+
+    }
 
     for (int i = 0; i < nrFigures; i++) {
         std::string figure_name = "Figure" + std::to_string(i);
@@ -142,9 +193,6 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto nrpoints = configuration[figure_name]["nrPoints"].as_int_or_die();
             auto nrlines = configuration[figure_name]["nrLines"].as_int_or_die();
 
-            std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
-
             Figure fig;
             for (int j = 0; j < nrpoints; j++) {
                 std::string point_name = "point" + std::to_string(j);
@@ -158,7 +206,22 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
                 for (auto a: line) { face.point_indexes.push_back(a); }
                 fig.faces.push_back(face);
             }
-            fig.color = drawingcolor;
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                fig.ambientReflection = ambiR;
+
+                fig.specularReflection = Color(0,0,0);
+                fig.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = drawingcolor;
+                fig.ambientReflection = Color(1,1,1);
+                fig.specularReflection = Color(0,0,0);
+                fig.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(fig, allTrans);
             figures.push_back(fig);
         }
@@ -178,10 +241,24 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
 
-            auto cube = generateCube(figureColor);
+            auto cube = generateCube(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
+
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(cube, allTrans);
             figures.push_back(cube);
         }
@@ -201,10 +278,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto cube = generateTetrahedron(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
 
-            auto cube = generateTetrahedron(figureColor);
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(cube, allTrans);
             figures.push_back(cube);
         }
@@ -224,10 +314,24 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto cube = generateOctahedron(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
 
-            auto cube = generateOctahedron(figureColor);
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+
             applyTransformation(cube, allTrans);
             figures.push_back(cube);
         }
@@ -247,10 +351,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto cube = generateIcosahedron(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
 
-            auto cube = generateIcosahedron(figureColor);
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(cube, allTrans);
             figures.push_back(cube);
         }
@@ -270,10 +387,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto cube = generateDodecahedron(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
 
-            auto cube = generateDodecahedron(figureColor);
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(cube, allTrans);
             figures.push_back(cube);
         }
@@ -295,10 +425,22 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
-
-            auto sphere = generateSphere(figureColor, iterations);
+            auto sphere = generateSphere(white, iterations);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                sphere.ambientReflection = ambiR;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color (1,1,1);
+                sphere.ambientReflection = drawingcolor;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(sphere, allTrans);
             figures.push_back(sphere);
         }
@@ -321,10 +463,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto sphere = generateCone(white, iterations, height);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                sphere.ambientReflection = ambiR;
 
-            auto sphere = generateCone(figureColor, iterations, height);
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                sphere.ambientReflection = drawingcolor;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(sphere, allTrans);
             figures.push_back(sphere);
         }
@@ -347,10 +502,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto sphere = generateCylinder(white, iterations, height);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                sphere.ambientReflection = ambiR;
 
-            auto sphere = generateCylinder(figureColor, iterations, height);
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                sphere.ambientReflection = drawingcolor;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(sphere, allTrans);
             figures.push_back(sphere);
         }
@@ -375,10 +543,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto sphere = generateTorus(white, r, R, n, m);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                sphere.ambientReflection = ambiR;
 
-            auto sphere = generateTorus(figureColor, r, R, n, m);
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                sphere.ambientReflection = drawingcolor;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(sphere, allTrans);
             figures.push_back(sphere);
         }
@@ -504,22 +685,14 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
                     continue;
                 }
                 if (c == '('){
-                    keepp =curp;
-                    keepH = H;
-                    keepL = L;
-                    keepU = U;
-                    /**pointstack.push_back(curp);
+                    pointstack.push_back(curp);
                     Hstack.push_back(H);
                     Lstack.push_back(L);
-                    Ustack.push_back(U);**/
+                    Ustack.push_back(U);
                     continue;
                 }
                 if (c == ')'){
-                    H = keepH;
-                    L = keepL;
-                    U = keepU;
-                    curp = keepp;
-                    /**curp = pointstack.back();
+                    curp = pointstack.back();
                     pointstack.pop_back();
 
                     H =  Hstack.back();
@@ -529,11 +702,26 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
                     Lstack.pop_back();
 
                     U = Ustack.back();
-                    Ustack.pop_back();**/
+                    Ustack.pop_back();
                     continue;
                 }
             }
-            fig.color = figureColor;
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                fig.ambientReflection = ambiR;
+
+                fig.specularReflection = Color(0,0,0);
+                fig.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                fig.ambientReflection = drawingcolor;
+                fig.specularReflection = Color(0,0,0);
+                fig.diffuseReflection = Color(0,0,0);
+            }
             applyTransformation(fig, allTrans);
             figures.push_back(fig);
         }
@@ -576,7 +764,22 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
                 for (auto a: line) { face.point_indexes.push_back(a); }
                 fig.faces.push_back(face);
             }
-            fig.color = drawingcolor;
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                fig.ambientReflection = ambiR;
+
+                fig.specularReflection = Color(0,0,0);
+                fig.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                fig.ambientReflection = drawingcolor;
+                fig.specularReflection = Color(0,0,0);
+                fig.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(fig, thickfigs, radius, n, m);
             for (auto &f: thickfigs){
@@ -604,10 +807,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto cube = generateCube(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
 
-            auto cube = generateCube(figureColor);
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(cube, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -635,10 +851,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto tetra = generateTetrahedron(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                tetra.ambientReflection = ambiR;
 
-            auto tetra = generateTetrahedron(figureColor);
+                tetra.specularReflection = Color(0,0,0);
+                tetra.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                tetra.ambientReflection = drawingcolor;
+                tetra.specularReflection = Color(0,0,0);
+                tetra.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(tetra, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -666,10 +895,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto cube = generateOctahedron(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
 
-            auto cube = generateOctahedron(figureColor);
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(cube, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -697,10 +939,22 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
-
-            auto cube = generateIcosahedron(figureColor);
+            auto cube = generateIcosahedron(white);
+            if (type == "LightedZBuffering") {
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
+                cube.specularReflection = Color(0, 0, 0);
+                cube.diffuseReflection = Color(0, 0, 0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(cube, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -728,10 +982,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto cube = generateDodecahedron(white);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                cube.ambientReflection = ambiR;
 
-            auto cube = generateDodecahedron(figureColor);
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                cube.ambientReflection = drawingcolor;
+                cube.specularReflection = Color(0,0,0);
+                cube.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(cube, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -760,10 +1027,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto sphere = generateSphere(white, iterations);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                sphere.ambientReflection = ambiR;
 
-            auto sphere = generateSphere(figureColor, iterations);
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                sphere.ambientReflection = drawingcolor;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(sphere, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -793,10 +1073,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto sphere = generateCone(white, iterations, height);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                sphere.ambientReflection = ambiR;
 
-            auto sphere = generateCone(figureColor, iterations, height);
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                sphere.ambientReflection = drawingcolor;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(sphere, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -826,10 +1119,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto sphere = generateCylinder(white, iterations, height);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                sphere.ambientReflection = ambiR;
 
-            auto sphere = generateCylinder(figureColor, iterations, height);
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                sphere.ambientReflection = drawingcolor;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(sphere, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -859,10 +1165,23 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
             auto scale = scaleFigure(scal);
             auto allTrans = rotX * rotZ * rotY * scale * trans * V;
 
-            auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-            Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+            auto sphere = generateTorus(white, r, R, n, m);
+            if (type == "LightedZBuffering"){
+                auto ambi_R = configuration[figure_name]["ambientReflection"].as_double_tuple_or_die();
+                Color ambiR(ambi_R[0], ambi_R[1], ambi_R[2]);
+                sphere.ambientReflection = ambiR;
 
-            auto sphere = generateTorus(figureColor, r, R, n, m);
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
+            else {
+                std::vector<double> drawing_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color drawingcolor = Color(drawing_color[0], drawing_color[1], drawing_color[2]);
+                finalLight.ambientLight = Color(1,1,1);
+                sphere.ambientReflection = drawingcolor;
+                sphere.specularReflection = Color(0,0,0);
+                sphere.diffuseReflection = Color(0,0,0);
+            }
             Figures3D thickfigs;
             generateThickFigure(sphere, thickfigs, radius, n, m);
             for (auto &fig: thickfigs){
@@ -906,13 +1225,15 @@ img::EasyImage triangZbuf(const ini::Configuration& configuration){
     img::EasyImage image(std::lround(imagex), std::lround(imagey), bgcolor);
 
     ZBuffer buffer(image.get_width(), image.get_height());
+    double idk = 1;
     for (auto& fig: figures){
         for (auto& fa: fig.faces){
                 Vector3D a = fig.points[fa.point_indexes[0]];
                 Vector3D b = fig.points[fa.point_indexes[1]];
                 Vector3D c = fig.points[fa.point_indexes[2]];
 
-                draw_zbuf_triag(buffer, image, a, b, c, d, dcx, dcy, fig.color);
+                draw_zbuf_triag(buffer, image, a, b, c, d, dcx, dcy, fig.ambientReflection, fig.diffuseReflection,
+                                fig.specularReflection, finalLight, idk);
         }
     }
     return image;

@@ -2,6 +2,7 @@
 #define ENGINE_THREEDEELINES_H
 
 #include "LSystems.h"
+#include "Light.h"
 #include "vector/vector3d.h"
 #include <cmath>
 
@@ -18,6 +19,11 @@ public:
     std::vector<Vector3D> points;
     std::vector<Face> faces;
     Color color;
+
+    Color ambientReflection;
+    Color diffuseReflection;
+    Color specularReflection;
+    double reflectionCoefficient;
 };
 typedef std::list<Figure> Figures3D;
 

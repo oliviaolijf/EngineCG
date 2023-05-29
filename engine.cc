@@ -473,9 +473,9 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 int pointcounter = 0;
 
                 Vector3D curp = Vector3D::point(0, 0, 0);
-                Vector3D H = Vector3D::point(1, 0, 0);
-                Vector3D L = Vector3D::point(0, 1, 0);
-                Vector3D U = Vector3D::point(0, 0, 1);
+                Vector3D H = Vector3D::vector(1, 0, 0);
+                Vector3D L = Vector3D::vector(0, 1, 0);
+                Vector3D U = Vector3D::vector(0, 0, 1);
 
                 Vector3D keepH;
                 Vector3D keepL;
@@ -500,6 +500,8 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         else if (s == '\\') temp += "\\";
                         else if (s == '/') temp += "/";
                         else if (s == '|') temp += "|";
+                        else if (s == '(') temp += '(';
+                        else if (s == ')') temp += ')';
                         else if (alfabet.count(s)) temp += lsystem.get_replacement(s);
                     }
                     initiator = temp;
@@ -509,8 +511,10 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         if (lsystem.draw(c)) {
                             fig.points.push_back(curp);
                             curp += H;
-                            pointcounter++;
-                            Face face({pointcounter, pointcounter-1});
+                            std::cout << H << std::endl;
+                            std::cout << pointcounter << std::endl;
+                            pointcounter = fig.points.size()-1;
+                            Face face({pointcounter+1, pointcounter});
                             fig.faces.push_back(face);
                             fig.points.push_back(curp);
                         } else {
@@ -536,7 +540,7 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         U = -(temp*sin(angle)) + (U*cos(angle));
                        continue;
                     }
-                    if (c == '&') {
+                   if (c == '&') {
                         Vector3D temp = H;
                         H = (H* cos(-angle)) + (U* sin(-angle));
                         U = -(temp* sin(-angle)) + (U*cos(-angle));
@@ -1687,6 +1691,11 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
     }
 
     else if (type == "ZBuffering"){
+        auto img = triangZbuf(configuration);
+        return img;
+    }
+
+    else if (type == "LightedZBuffering"){
         auto img = triangZbuf(configuration);
         return img;
     }
