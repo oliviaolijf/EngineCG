@@ -511,8 +511,6 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                         if (lsystem.draw(c)) {
                             fig.points.push_back(curp);
                             curp += H;
-                            std::cout << H << std::endl;
-                            std::cout << pointcounter << std::endl;
                             pointcounter = fig.points.size()-1;
                             Face face({pointcounter+1, pointcounter});
                             fig.faces.push_back(face);
@@ -941,21 +939,26 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                     figures.push_back(fig);
                 }
             }
-            else if (type2 == "ThickSphere") {
-                auto iterations = configuration[figure_name]["n"].as_int_or_die();
+            else if (type2 == "Thick3DLSystem") {
+                Figure fig;
+                auto inputfile = configuration[figure_name]["inputfile"].as_string_or_die();
+                std::ifstream input(inputfile);
+                LParser::LSystem3D lsystem(input);
+                input.close();
 
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
                 auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
                 auto m = configuration[figure_name]["m"].as_int_or_die();
                 auto n = configuration[figure_name]["n"].as_int_or_die();
                 auto radius = configuration[figure_name]["radius"].as_double_or_die();
 
-                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-                auto centerr = Vector3D::point(center[0], center[1], center[2]);
-                auto trans = translate(centerr);
-
                 auto rotX = rotateX((rotatX * M_PI) / 180);
                 auto rotY = rotateY((rotatY * M_PI) / 180);
                 auto rotZ = rotateZ((rotatZ * M_PI) / 180);
@@ -965,111 +968,132 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
                 Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
 
-                auto sphere = generateSphere(figureColor, iterations);
-                Figures3D thickfigs;
-                generateThickFigure(sphere, thickfigs, radius, n, m);
-                for (auto &fig: thickfigs){
-                    applyTransformation(fig, allTrans);
-                    figures.push_back(fig);
+                auto alfabet = lsystem.get_alphabet();
+                std::string initiator = lsystem.get_initiator();
+                auto angle = lsystem.get_angle();
+                auto iterations = lsystem.get_nr_iterations();
+
+                angle = (angle * M_PI) / 180;
+
+                int pointcounter = 0;
+
+                Vector3D curp = Vector3D::point(0, 0, 0);
+                Vector3D H = Vector3D::vector(1, 0, 0);
+                Vector3D L = Vector3D::vector(0, 1, 0);
+                Vector3D U = Vector3D::vector(0, 0, 1);
+
+                Vector3D keepH;
+                Vector3D keepL;
+                Vector3D keepU;
+                Vector3D keepp;
+
+                fig.points.push_back(curp);
+
+                int counter = 0;
+                std::list<Vector3D> pointstack;
+                std::list<Vector3D> Hstack;
+                std::list<Vector3D> Lstack;
+                std::list<Vector3D> Ustack;
+
+                for (int it = 0; it < iterations; it++) {
+                    std::string temp;
+                    for (auto &s: initiator) {
+                        if (s == '+') temp += "+";
+                        else if (s == '-') temp += "-";
+                        else if (s == '^') temp += "^";
+                        else if (s == '&') temp += "&";
+                        else if (s == '\\') temp += "\\";
+                        else if (s == '/') temp += "/";
+                        else if (s == '|') temp += "|";
+                        else if (s == '(') temp += '(';
+                        else if (s == ')') temp += ')';
+                        else if (alfabet.count(s)) temp += lsystem.get_replacement(s);
+                    }
+                    initiator = temp;
                 }
-            }
-            else if (type2 == "ThickCone") {
-                auto iterations = configuration[figure_name]["n"].as_int_or_die();
-                auto height = configuration[figure_name]["height"].as_double_or_die();
+                for (auto &c: initiator) {
+                    if (alfabet.count(c)) {
+                        if (lsystem.draw(c)) {
+                            fig.points.push_back(curp);
+                            curp += H;
+                            pointcounter = fig.points.size()-1;
+                            Face face({pointcounter+1, pointcounter});
+                            fig.faces.push_back(face);
+                            fig.points.push_back(curp);
+                        } else {
+                            curp += H;
+                        }
+                        continue;
+                    }
+                    if (c == '+') {
+                        Vector3D temp = H;
+                        H = (H*cos(angle)) + (L*sin(angle));
+                        L = -(temp*sin(angle)) + (L*cos(angle));
+                        continue;
+                    }
+                    if (c == '-') {
+                        Vector3D temp = H;
+                        H = (H*cos(-angle)) + (L* sin(-angle));
+                        L = -(temp*sin(-angle)) + (L*cos(-angle));
+                        continue;
+                    }
+                    if (c == '^'){
+                        Vector3D temp = H;
+                        H = (H*cos(angle)) + (U* sin(angle));
+                        U = -(temp*sin(angle)) + (U*cos(angle));
+                        continue;
+                    }
+                    if (c == '&') {
+                        Vector3D temp = H;
+                        H = (H* cos(-angle)) + (U* sin(-angle));
+                        U = -(temp* sin(-angle)) + (U*cos(-angle));
+                        continue;
+                    }
+                    if (c == '\\'){
+                        Vector3D temp = L;
+                        L = (L* cos(angle)) - (U*sin(angle));
+                        U = (temp*sin(angle)) + (U* cos(angle));
+                        continue;
+                    }
+                    if (c == '/'){
+                        Vector3D temp = L;
+                        L = (L*cos(-angle)) - (U* sin(-angle));
+                        U = (temp*sin(-angle)) + (U*cos(-angle));
+                        continue;
+                    }
+                    if (c == '|'){
+                        H = -H;
+                        L = -L;
+                        continue;
+                    }
+                    if (c == '('){
+                        pointstack.push_back(curp);
+                        Hstack.push_back(H);
+                        Lstack.push_back(L);
+                        Ustack.push_back(U);
+                        continue;
+                    }
+                    if (c == ')'){
+                        curp = pointstack.back();
+                        pointstack.pop_back();
 
-                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
-                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
-                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
-                auto scal = configuration[figure_name]["scale"].as_double_or_die();
-                auto m = configuration[figure_name]["m"].as_int_or_die();
-                auto n = configuration[figure_name]["n"].as_int_or_die();
-                auto radius = configuration[figure_name]["radius"].as_double_or_die();
+                        H =  Hstack.back();
+                        Hstack.pop_back();
 
-                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-                auto centerr = Vector3D::point(center[0], center[1], center[2]);
-                auto trans = translate(centerr);
+                        L = Lstack.back();
+                        Lstack.pop_back();
 
-                auto rotX = rotateX((rotatX * M_PI) / 180);
-                auto rotY = rotateY((rotatY * M_PI) / 180);
-                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
-                auto scale = scaleFigure(scal);
-                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
-
-                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
-
-                auto sphere = generateCone(figureColor, iterations, height);
-                Figures3D thickfigs;
-                generateThickFigure(sphere, thickfigs, radius, n, m);
-                for (auto &fig: thickfigs){
-                    applyTransformation(fig, allTrans);
-                    figures.push_back(fig);
+                        U = Ustack.back();
+                        Ustack.pop_back();
+                        continue;
+                    }
                 }
-            }
-            else if (type2 == "ThickCylinder") {
-                auto iterations = configuration[figure_name]["n"].as_int_or_die();
-                auto height = configuration[figure_name]["height"].as_double_or_die();
-
-                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
-                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
-                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
-                auto scal = configuration[figure_name]["scale"].as_double_or_die();
-                auto m = configuration[figure_name]["m"].as_int_or_die();
-                auto n = configuration[figure_name]["n"].as_int_or_die();
-                auto radius = configuration[figure_name]["radius"].as_double_or_die();
-
-                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-                auto centerr = Vector3D::point(center[0], center[1], center[2]);
-                auto trans = translate(centerr);
-
-                auto rotX = rotateX((rotatX * M_PI) / 180);
-                auto rotY = rotateY((rotatY * M_PI) / 180);
-                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
-                auto scale = scaleFigure(scal);
-                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
-
-                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
-
-                auto sphere = generateCylinder(figureColor, iterations, height);
+                fig.color = figureColor;
                 Figures3D thickfigs;
-                generateThickFigure(sphere, thickfigs, radius, n, m);
-                for (auto &fig: thickfigs){
-                    applyTransformation(fig, allTrans);
-                    figures.push_back(fig);
-                }
-            }
-            else if (type2 == "ThickTorus") {
-                auto r = configuration[figure_name]["r"].as_double_or_die();
-                auto R = configuration[figure_name]["R"].as_double_or_die();
-                auto n = configuration[figure_name]["n"].as_double_or_die();
-                auto m = configuration[figure_name]["m"].as_double_or_die();
-
-                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
-                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
-                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
-                auto scal = configuration[figure_name]["scale"].as_double_or_die();
-                auto radius = configuration[figure_name]["radius"].as_double_or_die();
-
-                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-                auto centerr = Vector3D::point(center[0], center[1], center[2]);
-                auto trans = translate(centerr);
-
-                auto rotX = rotateX((rotatX * M_PI) / 180);
-                auto rotY = rotateY((rotatY * M_PI) / 180);
-                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
-                auto scale = scaleFigure(scal);
-                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
-
-                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
-
-                auto sphere = generateTorus(figureColor, r, R, n, m);
-                Figures3D thickfigs;
-                generateThickFigure(sphere, thickfigs, radius, n, m);
-                for (auto &fig: thickfigs){
-                    applyTransformation(fig, allTrans);
-                    figures.push_back(fig);
+                generateThickFigure(fig, thickfigs, radius, n, m);
+                for (auto &f: thickfigs){
+                    applyTransformation(f, allTrans);
+                    figures.push_back(f);
                 }
             }
         }
@@ -1350,6 +1374,304 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 applyTransformation(sphere, allTrans);
                 figures.push_back(sphere);
             }
+            else if (type2 == "3DLSystem") {
+                Figure fig;
+                auto inputfile = configuration[figure_name]["inputfile"].as_string_or_die();
+                std::ifstream input(inputfile);
+                LParser::LSystem3D lsystem(input);
+                input.close();
+
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto alfabet = lsystem.get_alphabet();
+                std::string initiator = lsystem.get_initiator();
+                auto angle = lsystem.get_angle();
+                auto iterations = lsystem.get_nr_iterations();
+
+                angle = (angle * M_PI) / 180;
+
+                int pointcounter = 0;
+
+                Vector3D curp = Vector3D::point(0, 0, 0);
+                Vector3D H = Vector3D::vector(1, 0, 0);
+                Vector3D L = Vector3D::vector(0, 1, 0);
+                Vector3D U = Vector3D::vector(0, 0, 1);
+
+                Vector3D keepH;
+                Vector3D keepL;
+                Vector3D keepU;
+                Vector3D keepp;
+
+                fig.points.push_back(curp);
+
+                int counter = 0;
+                std::list<Vector3D> pointstack;
+                std::list<Vector3D> Hstack;
+                std::list<Vector3D> Lstack;
+                std::list<Vector3D> Ustack;
+
+                for (int it = 0; it < iterations; it++) {
+                    std::string temp;
+                    for (auto &s: initiator) {
+                        if (s == '+') temp += "+";
+                        else if (s == '-') temp += "-";
+                        else if (s == '^') temp += "^";
+                        else if (s == '&') temp += "&";
+                        else if (s == '\\') temp += "\\";
+                        else if (s == '/') temp += "/";
+                        else if (s == '|') temp += "|";
+                        else if (s == '(') temp += '(';
+                        else if (s == ')') temp += ')';
+                        else if (alfabet.count(s)) temp += lsystem.get_replacement(s);
+                    }
+                    initiator = temp;
+                }
+                for (auto &c: initiator) {
+                    if (alfabet.count(c)) {
+                        if (lsystem.draw(c)) {
+                            fig.points.push_back(curp);
+                            curp += H;
+                            pointcounter = fig.points.size()-1;
+                            Face face({pointcounter+1, pointcounter});
+                            fig.faces.push_back(face);
+                            fig.points.push_back(curp);
+                        } else {
+                            curp += H;
+                        }
+                        continue;
+                    }
+                    if (c == '+') {
+                        Vector3D temp = H;
+                        H = (H*cos(angle)) + (L*sin(angle));
+                        L = -(temp*sin(angle)) + (L*cos(angle));
+                        continue;
+                    }
+                    if (c == '-') {
+                        Vector3D temp = H;
+                        H = (H*cos(-angle)) + (L* sin(-angle));
+                        L = -(temp*sin(-angle)) + (L*cos(-angle));
+                        continue;
+                    }
+                    if (c == '^'){
+                        Vector3D temp = H;
+                        H = (H*cos(angle)) + (U* sin(angle));
+                        U = -(temp*sin(angle)) + (U*cos(angle));
+                        continue;
+                    }
+                    if (c == '&') {
+                        Vector3D temp = H;
+                        H = (H* cos(-angle)) + (U* sin(-angle));
+                        U = -(temp* sin(-angle)) + (U*cos(-angle));
+                        continue;
+                    }
+                    if (c == '\\'){
+                        Vector3D temp = L;
+                        L = (L* cos(angle)) - (U*sin(angle));
+                        U = (temp*sin(angle)) + (U* cos(angle));
+                        continue;
+                    }
+                    if (c == '/'){
+                        Vector3D temp = L;
+                        L = (L*cos(-angle)) - (U* sin(-angle));
+                        U = (temp*sin(-angle)) + (U*cos(-angle));
+                        continue;
+                    }
+                    if (c == '|'){
+                        H = -H;
+                        L = -L;
+                        continue;
+                    }
+                    if (c == '('){
+                        pointstack.push_back(curp);
+                        Hstack.push_back(H);
+                        Lstack.push_back(L);
+                        Ustack.push_back(U);
+                        continue;
+                    }
+                    if (c == ')'){
+                        curp = pointstack.back();
+                        pointstack.pop_back();
+
+                        H =  Hstack.back();
+                        Hstack.pop_back();
+
+                        L = Lstack.back();
+                        Lstack.pop_back();
+
+                        U = Ustack.back();
+                        Ustack.pop_back();
+                        continue;
+                    }
+                }
+                fig.color = figureColor;
+                applyTransformation(fig, allTrans);
+                figures.push_back(fig);
+            }
+
+            else if (type2 == "FractalCube") {
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+                auto nrit = configuration[figure_name]["nrIterations"].as_int_or_die();
+                auto fscale = configuration[figure_name]["fractalScale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateCube(figureColor);
+                Figures3D fractal;
+                generateFractal(cube, fractal, nrit, fscale);
+                for (auto& f: fractal){
+                    applyTransformation(f, allTrans);
+                    figures.push_back(f);
+                }
+            }
+            else if (type2 == "FractalTetrahedron") {
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+                auto nrit = configuration[figure_name]["nrIterations"].as_int_or_die();
+                auto fscale = configuration[figure_name]["fractalScale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateTetrahedron(figureColor);
+                Figures3D fractal;
+                generateFractal(cube, fractal, nrit, fscale);
+                for (auto& f: fractal){
+                    applyTransformation(f, allTrans);
+                    figures.push_back(f);
+                }
+            }
+            else if (type2 == "FractalOctahedron") {
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto nrit = configuration[figure_name]["nrIterations"].as_int_or_die();
+                auto fscale = configuration[figure_name]["fractalScale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateOctahedron(figureColor);
+                Figures3D fractal;
+                generateFractal(cube, fractal, nrit, fscale);
+                for (auto& f: fractal){
+                    applyTransformation(f, allTrans);
+                    figures.push_back(f);
+                }
+            }
+            else if (type2 == "FractalIcosahedron") {
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto nrit = configuration[figure_name]["nrIterations"].as_int_or_die();
+                auto fscale = configuration[figure_name]["fractalScale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateIcosahedron(figureColor);
+                Figures3D fractal;
+                generateFractal(cube, fractal, nrit, fscale);
+                for (auto& f: fractal){
+                    applyTransformation(f, allTrans);
+                    figures.push_back(f);
+                }
+            }
+            else if (type2 == "FractalDodecahedron") {
+                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
+                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
+                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
+                auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto nrit = configuration[figure_name]["nrIterations"].as_int_or_die();
+                auto fscale = configuration[figure_name]["fractalScale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
+                auto rotX = rotateX((rotatX * M_PI) / 180);
+                auto rotY = rotateY((rotatY * M_PI) / 180);
+                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
+                auto scale = scaleFigure(scal);
+                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
+
+                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
+                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
+
+                auto cube = generateDodecahedron(figureColor);
+                Figures3D fractal;
+                generateFractal(cube, fractal, nrit, fscale);
+                for (auto& f: fractal){
+                    applyTransformation(f, allTrans);
+                    figures.push_back(f);
+                }
+            }
 
             else if (type2 == "ThickLineDrawing") {
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
@@ -1553,21 +1875,26 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                     figures.push_back(fig);
                 }
             }
-            else if (type2 == "ThickSphere") {
-                auto iterations = configuration[figure_name]["n"].as_int_or_die();
+            else if (type2 == "Thick3DLSystem") {
+                Figure fig;
+                auto inputfile = configuration[figure_name]["inputfile"].as_string_or_die();
+                std::ifstream input(inputfile);
+                LParser::LSystem3D lsystem(input);
+                input.close();
 
                 auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
                 auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
                 auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
                 auto scal = configuration[figure_name]["scale"].as_double_or_die();
+
+                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
+                auto centerr = Vector3D::point(center[0], center[1], center[2]);
+                auto trans = translate(centerr);
+
                 auto m = configuration[figure_name]["m"].as_int_or_die();
                 auto n = configuration[figure_name]["n"].as_int_or_die();
                 auto radius = configuration[figure_name]["radius"].as_double_or_die();
 
-                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-                auto centerr = Vector3D::point(center[0], center[1], center[2]);
-                auto trans = translate(centerr);
-
                 auto rotX = rotateX((rotatX * M_PI) / 180);
                 auto rotY = rotateY((rotatY * M_PI) / 180);
                 auto rotZ = rotateZ((rotatZ * M_PI) / 180);
@@ -1577,111 +1904,132 @@ img::EasyImage generate_image(const ini::Configuration &configuration) {
                 auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
                 Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
 
-                auto sphere = generateSphere(figureColor, iterations);
-                Figures3D thickfigs;
-                generateThickFigure(sphere, thickfigs, radius, n, m);
-                for (auto &fig: thickfigs){
-                    applyTransformation(fig, allTrans);
-                    figures.push_back(fig);
+                auto alfabet = lsystem.get_alphabet();
+                std::string initiator = lsystem.get_initiator();
+                auto angle = lsystem.get_angle();
+                auto iterations = lsystem.get_nr_iterations();
+
+                angle = (angle * M_PI) / 180;
+
+                int pointcounter = 0;
+
+                Vector3D curp = Vector3D::point(0, 0, 0);
+                Vector3D H = Vector3D::vector(1, 0, 0);
+                Vector3D L = Vector3D::vector(0, 1, 0);
+                Vector3D U = Vector3D::vector(0, 0, 1);
+
+                Vector3D keepH;
+                Vector3D keepL;
+                Vector3D keepU;
+                Vector3D keepp;
+
+                fig.points.push_back(curp);
+
+                int counter = 0;
+                std::list<Vector3D> pointstack;
+                std::list<Vector3D> Hstack;
+                std::list<Vector3D> Lstack;
+                std::list<Vector3D> Ustack;
+
+                for (int it = 0; it < iterations; it++) {
+                    std::string temp;
+                    for (auto &s: initiator) {
+                        if (s == '+') temp += "+";
+                        else if (s == '-') temp += "-";
+                        else if (s == '^') temp += "^";
+                        else if (s == '&') temp += "&";
+                        else if (s == '\\') temp += "\\";
+                        else if (s == '/') temp += "/";
+                        else if (s == '|') temp += "|";
+                        else if (s == '(') temp += '(';
+                        else if (s == ')') temp += ')';
+                        else if (alfabet.count(s)) temp += lsystem.get_replacement(s);
+                    }
+                    initiator = temp;
                 }
-            }
-            else if (type2 == "ThickCone") {
-                auto iterations = configuration[figure_name]["n"].as_int_or_die();
-                auto height = configuration[figure_name]["height"].as_double_or_die();
+                for (auto &c: initiator) {
+                    if (alfabet.count(c)) {
+                        if (lsystem.draw(c)) {
+                            fig.points.push_back(curp);
+                            curp += H;
+                            pointcounter = fig.points.size()-1;
+                            Face face({pointcounter+1, pointcounter});
+                            fig.faces.push_back(face);
+                            fig.points.push_back(curp);
+                        } else {
+                            curp += H;
+                        }
+                        continue;
+                    }
+                    if (c == '+') {
+                        Vector3D temp = H;
+                        H = (H*cos(angle)) + (L*sin(angle));
+                        L = -(temp*sin(angle)) + (L*cos(angle));
+                        continue;
+                    }
+                    if (c == '-') {
+                        Vector3D temp = H;
+                        H = (H*cos(-angle)) + (L* sin(-angle));
+                        L = -(temp*sin(-angle)) + (L*cos(-angle));
+                        continue;
+                    }
+                    if (c == '^'){
+                        Vector3D temp = H;
+                        H = (H*cos(angle)) + (U* sin(angle));
+                        U = -(temp*sin(angle)) + (U*cos(angle));
+                        continue;
+                    }
+                    if (c == '&') {
+                        Vector3D temp = H;
+                        H = (H* cos(-angle)) + (U* sin(-angle));
+                        U = -(temp* sin(-angle)) + (U*cos(-angle));
+                        continue;
+                    }
+                    if (c == '\\'){
+                        Vector3D temp = L;
+                        L = (L* cos(angle)) - (U*sin(angle));
+                        U = (temp*sin(angle)) + (U* cos(angle));
+                        continue;
+                    }
+                    if (c == '/'){
+                        Vector3D temp = L;
+                        L = (L*cos(-angle)) - (U* sin(-angle));
+                        U = (temp*sin(-angle)) + (U*cos(-angle));
+                        continue;
+                    }
+                    if (c == '|'){
+                        H = -H;
+                        L = -L;
+                        continue;
+                    }
+                    if (c == '('){
+                        pointstack.push_back(curp);
+                        Hstack.push_back(H);
+                        Lstack.push_back(L);
+                        Ustack.push_back(U);
+                        continue;
+                    }
+                    if (c == ')'){
+                        curp = pointstack.back();
+                        pointstack.pop_back();
 
-                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
-                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
-                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
-                auto scal = configuration[figure_name]["scale"].as_double_or_die();
-                auto m = configuration[figure_name]["m"].as_int_or_die();
-                auto n = configuration[figure_name]["n"].as_int_or_die();
-                auto radius = configuration[figure_name]["radius"].as_double_or_die();
+                        H =  Hstack.back();
+                        Hstack.pop_back();
 
-                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-                auto centerr = Vector3D::point(center[0], center[1], center[2]);
-                auto trans = translate(centerr);
+                        L = Lstack.back();
+                        Lstack.pop_back();
 
-                auto rotX = rotateX((rotatX * M_PI) / 180);
-                auto rotY = rotateY((rotatY * M_PI) / 180);
-                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
-                auto scale = scaleFigure(scal);
-                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
-
-                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
-
-                auto sphere = generateCone(figureColor, iterations, height);
-                Figures3D thickfigs;
-                generateThickFigure(sphere, thickfigs, radius, n, m);
-                for (auto &fig: thickfigs){
-                    applyTransformation(fig, allTrans);
-                    figures.push_back(fig);
+                        U = Ustack.back();
+                        Ustack.pop_back();
+                        continue;
+                    }
                 }
-            }
-            else if (type2 == "ThickCylinder") {
-                auto iterations = configuration[figure_name]["n"].as_int_or_die();
-                auto height = configuration[figure_name]["height"].as_double_or_die();
-
-                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
-                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
-                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
-                auto scal = configuration[figure_name]["scale"].as_double_or_die();
-                auto m = configuration[figure_name]["m"].as_int_or_die();
-                auto n = configuration[figure_name]["n"].as_int_or_die();
-                auto radius = configuration[figure_name]["radius"].as_double_or_die();
-
-                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-                auto centerr = Vector3D::point(center[0], center[1], center[2]);
-                auto trans = translate(centerr);
-
-                auto rotX = rotateX((rotatX * M_PI) / 180);
-                auto rotY = rotateY((rotatY * M_PI) / 180);
-                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
-                auto scale = scaleFigure(scal);
-                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
-
-                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
-
-                auto sphere = generateCylinder(figureColor, iterations, height);
+                fig.color = figureColor;
                 Figures3D thickfigs;
-                generateThickFigure(sphere, thickfigs, radius, n, m);
-                for (auto &fig: thickfigs){
-                    applyTransformation(fig, allTrans);
-                    figures.push_back(fig);
-                }
-            }
-            else if (type2 == "ThickTorus") {
-                auto r = configuration[figure_name]["r"].as_double_or_die();
-                auto R = configuration[figure_name]["R"].as_double_or_die();
-                auto n = configuration[figure_name]["n"].as_double_or_die();
-                auto m = configuration[figure_name]["m"].as_double_or_die();
-
-                auto rotatX = configuration[figure_name]["rotateX"].as_double_or_die();
-                auto rotatY = configuration[figure_name]["rotateY"].as_double_or_die();
-                auto rotatZ = configuration[figure_name]["rotateZ"].as_double_or_die();
-                auto scal = configuration[figure_name]["scale"].as_double_or_die();
-                auto radius = configuration[figure_name]["radius"].as_double_or_die();
-
-                auto center = configuration[figure_name]["center"].as_double_tuple_or_die();
-                auto centerr = Vector3D::point(center[0], center[1], center[2]);
-                auto trans = translate(centerr);
-
-                auto rotX = rotateX((rotatX * M_PI) / 180);
-                auto rotY = rotateY((rotatY * M_PI) / 180);
-                auto rotZ = rotateZ((rotatZ * M_PI) / 180);
-                auto scale = scaleFigure(scal);
-                auto allTrans = rotX * rotZ * rotY * scale * trans * V;
-
-                auto figure_color = configuration[figure_name]["color"].as_double_tuple_or_die();
-                Color figureColor = Color(figure_color[0], figure_color[1], figure_color[2]);
-
-                auto sphere = generateTorus(figureColor, r, R, n, m);
-                Figures3D thickfigs;
-                generateThickFigure(sphere, thickfigs, radius, n, m);
-                for (auto &fig: thickfigs){
-                    applyTransformation(fig, allTrans);
-                    figures.push_back(fig);
+                generateThickFigure(fig, thickfigs, radius, n, m);
+                for (auto &f: thickfigs){
+                    applyTransformation(f, allTrans);
+                    figures.push_back(f);
                 }
             }
         }
